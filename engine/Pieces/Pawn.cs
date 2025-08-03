@@ -1,0 +1,63 @@
+using ChessEngine.Utils;
+using ChessEngine.Utils.Logging;
+using Bitboard = ulong;
+
+namespace ChessEngine.Pieces {
+    public static class Pawn {
+        public static Bitboard ComputePossibleMoves(Square square, Chessboard chessboard, TurnColor? turnColor = null) {
+            var pawnLocation = BitOperations.ToBitboard(square);
+
+            if ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) {
+                // check the single space infront of the white pawn
+
+                Bitboard pawn_one_step = (pawnLocation << 8) & ~chessboard.AllPieces;
+                Bitboard pawn_two_steps = ((pawn_one_step & LookupTables.GetRankMask(Rank.RANK_3)) << 8) & ~chessboard.AllPieces;
+                // the union of the movements dictate the possible moves forward available
+                Bitboard pawn_valid_moves = pawn_one_step | pawn_two_steps;
+
+                /*  now we calculate the attack moves
+                    check the left side of the pawn, minding the underflow File A */
+                Bitboard pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) << 7;
+                // then check the right side of the pawn, minding the overflow File H
+                Bitboard pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) << 9;
+                // Calculate where I can actually attack something + en passant
+                //Logger.Log(BitOperations.ToSquare(pawn_left_attack), BitOperations.ToSquare(pawn_right_attack));
+
+                Bitboard pawn_valid_attacks =   (pawn_left_attack | pawn_right_attack) & 
+                                                (chessboard.AllBlackPieces | BitOperations.ToBitboard(chessboard.State.EnPassantSquare));
+                return pawn_valid_moves | pawn_valid_attacks;
+            }
+            else {
+                Bitboard pawn_one_step = (pawnLocation >> 8) & ~chessboard.AllPieces;
+                Bitboard pawn_two_steps = ((pawn_one_step & LookupTables.GetRankMask(Rank.RANK_6)) >> 8) & ~chessboard.AllPieces;
+                Bitboard pawn_valid_moves = pawn_one_step | pawn_two_steps;
+
+                Bitboard pawn_left_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_A) >> 7;
+                Bitboard pawn_right_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_H) >> 9;
+                Bitboard pawn_valid_attacks =   (pawn_left_attack | pawn_right_attack) & 
+                                                (chessboard.AllWhitePieces | BitOperations.ToBitboard(chessboard.State.EnPassantSquare));
+                return pawn_valid_moves | pawn_valid_attacks;
+            }
+        
+        }
+
+        public static Bitboard ComputePossibleAttacks(Square square, Chessboard chessboard, TurnColor? turnColor = null) {
+            var pawnLocation = BitOperations.ToBitboard(square);
+            Bitboard pawn_left_attack;
+            Bitboard pawn_right_attack;
+            var color = turnColor ?? chessboard.State.TurnColor;
+
+            if (color == TurnColor.White) {
+                pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) << 7;
+                pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) << 9;
+            }
+            else {
+                pawn_left_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_A) >> 7;
+                pawn_right_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_H) >> 9;
+            }
+
+            var ownSide = (color == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
+            return (pawn_left_attack | pawn_right_attack) & ~ownSide;
+        }
+    }
+}
