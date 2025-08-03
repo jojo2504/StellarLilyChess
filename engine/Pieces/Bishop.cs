@@ -8,7 +8,7 @@ namespace ChessEngine.Pieces {
         static readonly Bitboard[,] MagicBishopAttacks = new Bitboard[64, 512]; // 256 K
 
         static Bishop() {
-            var json_path = "/home/jojo/Documents/c#/Chess-Engine/engine/Resources/BMagicTable.json";
+            var json_path = "/home/jojo/Documents/c#/StellarLilyChess/engine/Resources/BMagicTable.json";
             BishopMagicTable = Magic.LoadMagicTable(options: Magic.jsonOptions, filePath: json_path);
             InitBishopAttacks();
         }

@@ -5,7 +5,7 @@ namespace ChessEngine.Utils.Logging {
         static Logger () {
             ClearLog();
         }
-        private static string LogFilePath = Path.Combine("/home/jojo/Documents/c#/Chess-Engine/engine/Utils/Logging", "logs.log");
+        private static string LogFilePath = Path.Combine("/home/jojo/Documents/c#/StellarLilyChess/engine/Utils/Logging", "logs.log");
 
         private static void LogMessage(LogEventLevel level = LogEventLevel.Information, params object[] Objects) {
             // Open the StreamWriter inside the using statement
