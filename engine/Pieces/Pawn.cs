@@ -32,11 +32,12 @@ namespace ChessEngine.Pieces {
                 Bitboard pawn_two_steps = ((pawn_one_step & LookupTables.GetRankMask(Rank.RANK_6)) >> 8) & ~chessboard.AllPieces;
                 Bitboard pawn_valid_moves = pawn_one_step | pawn_two_steps;
 
-                Bitboard pawn_left_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_A) >> 7;
-                Bitboard pawn_right_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_H) >> 9;
+                Bitboard pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) >> 7;
+                Bitboard pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) >> 9;
+
                 Bitboard pawn_valid_attacks =   (pawn_left_attack | pawn_right_attack) & 
                                                 (chessboard.AllWhitePieces | BitOperations.ToBitboard(chessboard.State.EnPassantSquare));
-                return pawn_valid_moves | pawn_valid_attacks;
+                return pawn_valid_moves | pawn_valid_attacks;   
             }
         
         }
@@ -45,15 +46,15 @@ namespace ChessEngine.Pieces {
             var pawnLocation = BitOperations.ToBitboard(square);
             Bitboard pawn_left_attack;
             Bitboard pawn_right_attack;
-            var color = turnColor ?? chessboard.State.TurnColor;
+            var color = turnColor ?? chessboard.stateStack.ElementAt(0).TurnColor;
 
             if (color == TurnColor.White) {
                 pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) << 7;
                 pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) << 9;
             }
             else {
-                pawn_left_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_A) >> 7;
-                pawn_right_attack = pawnLocation & LookupTables.GetFileClear(File.FILE_H) >> 9;
+                pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) >> 7;
+                pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) >> 9;
             }
 
             var ownSide = (color == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;

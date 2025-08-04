@@ -107,7 +107,7 @@ namespace ChessEngine {
         }
 
         void InitializeState() {
-            State.TurnColor = TurnColor.Black; //will reverse at the start of the white piece
+            State.TurnColor = TurnColor.White;
             State.CanBlackKingCastle = true;
             State.CanBlackQueenCastle = true;
             State.CanWhiteKingCastle = true;
@@ -287,7 +287,11 @@ namespace ChessEngine {
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
                 if (!IsIncheck()) {
+                    Logger.Log($"KING POSITION IS NOT IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
                     LegalMoves.AddRange(allPseudoLegalMoves[i]);
+                }
+                else {
+                    Logger.Log($"KING POSITION IS IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
                 }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
             }
@@ -309,7 +313,7 @@ namespace ChessEngine {
         public bool IsIncheck() {
             Bitboard AllAttackedSquares;
 
-            if (State.TurnColor == TurnColor.White) {
+            if (stateStack.ElementAt(0).TurnColor == TurnColor.White) {
                 //check if white king is in check
                 AllAttackedSquares = GenerateAttacks(TurnColor.Black);
                 return (AllAttackedSquares & WhiteKing.BitboardValue) != 0;
@@ -348,20 +352,20 @@ namespace ChessEngine {
             return false;
         }
 
-        ulong Perft(int depth) {
+        public ulong Perft(int depth) {
             int nMoves, i;
             ulong nodes = 0;
 
-            if (depth == 0) return 1UL;
+            if (depth == 0)
+                return 1UL;
 
             List<Move> allPseudoLegalMoves = GenerateMoves();
             nMoves = allPseudoLegalMoves.Count;
-
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsIncheck())
-                    //State.TurnColor = (TurnColor)(((int)State.TurnColor)^1);
+                if (!IsIncheck()) {
                     nodes += Perft(depth - 1);
+                }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
             }
             return nodes;

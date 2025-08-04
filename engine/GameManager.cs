@@ -10,10 +10,7 @@ namespace ChessEngine {
     class GameManager {
         Chessboard chessboard = new();
         string command;
-        string specType;
-        string movesLabel;
         string[] remaining;
-        string[] moveList;
 
         public GameManager() {
         }
@@ -39,27 +36,27 @@ namespace ChessEngine {
 
                 // ie: position startpos moves e2e4
                 else if (command == "position") {
-                    chessboard.State.TurnColor = (TurnColor)(((int)chessboard.State.TurnColor)^1);
+                    // should reconstruct the whole game before continuing (optional)
                     
                     Logger.Log($"Received {remaining[remaining.Length - 1]}");
                     chessboard.PushUci(remaining[remaining.Length - 1]);
 
-                    Logger.Log("new state:");
-                    Logger.Log(chessboard.State);
-
-                    Logger.Log(chessboard.ToString());
+                    Logger.Log("new finished (stack):");
+                    Logger.Log(chessboard.stateStack.ElementAt(0));
                 }
 
+                // should start with white, compute move as white, then change the turn color after the 
                 else if (command == "go") {
-                    chessboard.State.TurnColor = (TurnColor)(((int)chessboard.State.TurnColor)^1);
-                    
+                    Logger.Log("Turn to play: ");
+                    Logger.Log(chessboard.State.TurnColor);
+
                     List<Move> allLegalMoves = chessboard.GenerateLegalMoves();
                     int nMoves = allLegalMoves.Count;
 
                     Logger.Log($"{nMoves} possible moves");
-                    /*foreach (Move legalMove in allLegalMoves) {
+                    foreach (Move legalMove in allLegalMoves) {
                         Logger.Log(legalMove);
-                    }*/
+                    }
 
                     Random random = new();
                     int r = random.Next(nMoves);
@@ -69,8 +66,11 @@ namespace ChessEngine {
                     Logger.Log($"Playing {move.ToString().ToLower()}");
                     Logger.Log(chessboard.ToString());
 
-                    Logger.Log("new state:");
-                    Logger.Log(chessboard.State);
+                    Logger.Log("new finished (stack):");
+                    Logger.Log(chessboard.stateStack.ElementAt(0));
+
+                    //Logger.Log("preview of next turn state (unfinished)");
+                    //Logger.Log(chessboard.State);
 
                     Console.WriteLine($"bestmove {move.ToString().ToLower()}");
                 }

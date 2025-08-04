@@ -12,7 +12,7 @@ namespace ChessEngine.Pieces {
             for (int i = 0; i < 64; i++) {
                 InitBlockerMask(i);
             }
-            var json_path = @"/home/jojo/Documents/c#/StellarLilyChess/engine/Resources/RMagicTable.json";
+            var json_path = @$"{AppDomain.CurrentDomain.BaseDirectory}/Resources/RMagicTable.json";
             RookMagicTable = Magic.LoadMagicTable(options: Magic.jsonOptions, filePath: json_path);
             InitRookAttacks();
         }

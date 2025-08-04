@@ -2,10 +2,19 @@ using ChessEngine.Utils.Logging.Events;
 
 namespace ChessEngine.Utils.Logging {
     public static class Logger {
-        static Logger () {
+        //private static string LogFilePath = Path.Combine($"{EnvironmentMethods.TryGetSolutionDirectoryInfo().FullName}/engine/Utils/Logging", "logs.log");
+        private static string LogFilePath = Path.Combine($"{AppDomain.CurrentDomain.BaseDirectory}", "Logs", "logs.log");
+
+        static Logger() {
+            InitLogFolder();
             ClearLog();
         }
-        private static string LogFilePath = Path.Combine("/home/jojo/Documents/c#/StellarLilyChess/engine/Utils/Logging", "logs.log");
+
+        static void InitLogFolder() {
+            var logPath = Path.Combine($"{AppDomain.CurrentDomain.BaseDirectory}", "Logs");
+            if (!Directory.Exists(logPath))
+                Directory.CreateDirectory(logPath);
+        }
 
         private static void LogMessage(LogEventLevel level = LogEventLevel.Information, params object[] Objects) {
             // Open the StreamWriter inside the using statement
