@@ -22,4 +22,13 @@
     <ProjectReference Include="..\engine\StellarLilyChess.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\engine\Resources\*.*">
+      <CopyToOutputDirectory>False</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\engine\Records\*.*">
+      <CopyToOutputDirectory>False</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>  
+
 </Project>

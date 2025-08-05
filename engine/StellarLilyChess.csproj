@@ -11,4 +11,13 @@
 
   </PropertyGroup>
 
+  <ItemGroup>
+    <Content Include="..\engine\Resources\*.*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\engine\Records\*.*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

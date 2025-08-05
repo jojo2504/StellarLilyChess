@@ -6,7 +6,7 @@ namespace test;
 public class UnitTest1 {
     [Fact]
     public void TestGame1() {
-        var gameRecord = System.IO.File.ReadLines("C:/Users/Jojo/Documents/c#/StellarLilyChess/engine/records/gamebugged.txt");
+        var gameRecord = System.IO.File.ReadLines(@$"{AppDomain.CurrentDomain.BaseDirectory}/records/gamebugged.txt");
         var bugged = false;
         // iterate through each element within the array and
         // print it out
