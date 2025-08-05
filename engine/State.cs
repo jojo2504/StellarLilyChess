@@ -12,6 +12,8 @@ namespace ChessEngine {
         public bool Checkmated;
         public bool Stalemated;
         public Move? Move; // no move at the starting position
+        public bool OwnKingInCheck;  // (might be temp)
+        public bool EnemyKingInCheck;  // (might be temp)
 
         public override string ToString() {
             return
@@ -27,6 +29,8 @@ namespace ChessEngine {
                 $"Captured: {(CapturedPiece.HasValue ? CapturedPiece.ToString() : "None")}, " +
                 $"Checkmated: {Checkmated}, " +
                 $"Stalemated: {Stalemated}, " +
+                $"OwnKingInCheck: {OwnKingInCheck}, " +
+                $"EnemyKingInCheck: {EnemyKingInCheck}, " +
                 $"Move: {((Move is not null) ? Move.ToString() : "None")}";
         }
     }

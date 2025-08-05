@@ -9,8 +9,11 @@ namespace ChessEngine {
 
                 if (protocol == "perft") {
                     for (int depth = 0; depth <= 5; depth++) {
+                        var watch = System.Diagnostics.Stopwatch.StartNew();
                         Chessboard chessboard = new();
                         Logger.Log($"perft({depth}): {chessboard.Perft(depth)}");
+                        watch.Stop();
+                        Logger.Log(watch.ElapsedMilliseconds);
                     }
                     return;
                 }

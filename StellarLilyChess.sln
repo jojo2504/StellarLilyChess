@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StellarLilyChess", "engine\StellarLilyChess.csproj", "{D7939DA6-56E3-4711-9B73-9B57D91683D6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test", "test\test.csproj", "{37C45BA9-0A3A-4371-BF26-1CA38A739C4A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,5 +24,9 @@ Global
 		{109E678E-543C-4153-9BFD-45B4FC68429E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{109E678E-543C-4153-9BFD-45B4FC68429E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{109E678E-543C-4153-9BFD-45B4FC68429E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37C45BA9-0A3A-4371-BF26-1CA38A739C4A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37C45BA9-0A3A-4371-BF26-1CA38A739C4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37C45BA9-0A3A-4371-BF26-1CA38A739C4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37C45BA9-0A3A-4371-BF26-1CA38A739C4A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

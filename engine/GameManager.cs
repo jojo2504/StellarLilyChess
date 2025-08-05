@@ -37,40 +37,43 @@ namespace ChessEngine {
                 // ie: position startpos moves e2e4
                 else if (command == "position") {
                     // should reconstruct the whole game before continuing (optional)
-                    
+
                     Logger.Log($"Received {remaining[remaining.Length - 1]}");
                     chessboard.PushUci(remaining[remaining.Length - 1]);
+                    Logger.Log(chessboard.ToString());
 
                     Logger.Log("new finished (stack):");
                     Logger.Log(chessboard.stateStack.ElementAt(0));
+
+                    Logger.Log("------------------------");
+                    Logger.Log("preview of next turn state (unfinished)");
+                    Logger.Log(chessboard.State);
                 }
 
                 // should start with white, compute move as white, then change the turn color after the 
                 else if (command == "go") {
-                    Logger.Log("Turn to play: ");
-                    Logger.Log(chessboard.State.TurnColor);
-
                     List<Move> allLegalMoves = chessboard.GenerateLegalMoves();
                     int nMoves = allLegalMoves.Count;
 
-                    Logger.Log($"{nMoves} possible moves");
+                    /*Logger.Log($"{nMoves} possible moves");
                     foreach (Move legalMove in allLegalMoves) {
                         Logger.Log(legalMove);
-                    }
+                    }*/
 
                     Random random = new();
                     int r = random.Next(nMoves);
                     Move move = allLegalMoves[r];
 
-                    Move.MakeMove(chessboard, move, displayComputationLogs: true);
+                    Move.MakeMove(chessboard, move);
                     Logger.Log($"Playing {move.ToString().ToLower()}");
                     Logger.Log(chessboard.ToString());
 
                     Logger.Log("new finished (stack):");
                     Logger.Log(chessboard.stateStack.ElementAt(0));
 
-                    //Logger.Log("preview of next turn state (unfinished)");
-                    //Logger.Log(chessboard.State);
+                    Logger.Log("-------------------------------------------------");
+                    Logger.Log("preview of next turn state (unfinished)");
+                    Logger.Log(chessboard.State);
 
                     Console.WriteLine($"bestmove {move.ToString().ToLower()}");
                 }

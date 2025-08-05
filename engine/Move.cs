@@ -155,7 +155,7 @@ namespace ChessEngine {
             return new Move(word);
         }
 
-        public static void MakeMove(Chessboard chessboard, Move move, bool displayComputationLogs = false) {
+        public static void MakeMove(Chessboard chessboard, Move move) {
             var bitboardFrom = BitOperations.ToBitboard(move.From);
             var bitboardTo = BitOperations.ToBitboard(move.To);
 
@@ -269,12 +269,10 @@ namespace ChessEngine {
                             // check which capture piece it is
                             for (int opponantPieceTypeIndex = 0; opponantPieceTypeIndex < chessboard.Position.GetLength(1); opponantPieceTypeIndex++) {
                                 if ((chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex].BitboardValue & bitboardTo) != 0) {
-                                    if (displayComputationLogs) Logger.Log("capturing a", (PieceType)opponantPieceTypeIndex);
                                     // update piece positions and existance
                                     chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex].BitboardValue ^= bitboardTo; // remove captured piece
                                     chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardFrom; // remove old position
                                     chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardTo; // set new position
-                                    if (displayComputationLogs) Logger.Log("finished capturing");
 
                                     // check promotion
                                     switch (move.SpecialCode) {
@@ -305,45 +303,57 @@ namespace ChessEngine {
                             }
                         }
 
+                        // push into state (temp) if enemy king is in check
+                        Logger.Log("chessboard after move");
+                        Logger.Log(chessboard);
+
+                        Logger.Log("all piece");
+                        Logger.Log(StringHelper.FormatAsChessboard(chessboard.AllPieces));
+
+                        chessboard.State.OwnKingInCheck = chessboard.IsIncheck(chessboard.State.TurnColor);
+                        chessboard.State.EnemyKingInCheck = chessboard.IsIncheck(chessboard.State.TurnColor ^ TurnColor.Black);
+
                         //push the current state of the position onto the stack
                         chessboard.stateStack.Push(chessboard.State);
 
                         // reset en passant square
                         chessboard.State.EnPassantSquare = null;
+                        // reset ekic
+                        chessboard.State.EnemyKingInCheck = false;
 
                         // (right to castle)
-                        if (pieceTypeIndex == (int)PieceType.Rook) {
-                            if (move.From == Square.A1) chessboard.State.CanWhiteQueenCastle = false;
-                            else if (move.From == Square.H1) chessboard.State.CanWhiteKingCastle = false;
-                            else if (move.From == Square.A8) chessboard.State.CanBlackQueenCastle = false;
-                            else if (move.From == Square.H8) chessboard.State.CanBlackKingCastle = false;
-                        }
+                        switch (pieceTypeIndex) {
+                            case (int)PieceType.Rook:
+                                if (move.From == Square.A1) chessboard.State.CanWhiteQueenCastle = false;
+                                else if (move.From == Square.H1) chessboard.State.CanWhiteKingCastle = false;
+                                else if (move.From == Square.A8) chessboard.State.CanBlackQueenCastle = false;
+                                else if (move.From == Square.H8) chessboard.State.CanBlackKingCastle = false;
+                                break;
 
-                        else if (pieceTypeIndex == (int)PieceType.King) {
-                            if (move.From == Square.E1) {
-                                chessboard.State.CanWhiteKingCastle = false;
-                                chessboard.State.CanWhiteQueenCastle = false;
-                            }
-                            else if (move.From == Square.E8) {
-                                chessboard.State.CanBlackKingCastle = false;
-                                chessboard.State.CanBlackQueenCastle = false;
-                            }
-                        }
-
-                        // set en passant square
-                        else if (pieceTypeIndex == (int)PieceType.Pawn) {
-                            // double pawn push
-                            if (move.SpecialCode == (int)SpecialMovesCode.DoublePawnPush) {
-                                if (chessboard.State.TurnColor == TurnColor.White) {
-                                    chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) >> 8);
+                            case (int)PieceType.King:
+                                if (move.From == Square.E1) {
+                                    chessboard.State.CanWhiteKingCastle = false;
+                                    chessboard.State.CanWhiteQueenCastle = false;
                                 }
-                                else {
-                                    chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) << 8);
+                                else if (move.From == Square.E8) {
+                                    chessboard.State.CanBlackKingCastle = false;
+                                    chessboard.State.CanBlackQueenCastle = false;
                                 }
-                                Logger.Log("Setting en passant on square:", chessboard.State.EnPassantSquare);
-                            }
-                        }
+                                break;
 
+                            case (int)PieceType.Pawn:
+                                // double pawn push
+                                if (move.SpecialCode == (int)SpecialMovesCode.DoublePawnPush) {
+                                    if (chessboard.State.TurnColor == TurnColor.White) {
+                                        chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) >> 8);
+                                    }
+                                    else {
+                                        chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) << 8);
+                                    }
+                                    Logger.Log("Setting en passant on square:", chessboard.State.EnPassantSquare);
+                                }
+                                break;
+                        }
                         break;
                     }
                 }
@@ -351,10 +361,8 @@ namespace ChessEngine {
 
             // the state has been pushed above with their respective conditions and follow ups 
 
-            chessboard.State.TurnColor ^= TurnColor.Black; // toggle color // if commented out, should never turn swap
+            chessboard.State.TurnColor ^= TurnColor.Black; // toggle color
             chessboard.State.Move = null; // reset the state move for the next state
-
-            if (chessboard.stateStack.Count < 2) Logger.Fatal("ah bah ok");
         }
 
         public static void UnmakeMove(Chessboard chessboard, Move move) {
@@ -369,6 +377,7 @@ namespace ChessEngine {
             chessboard.State.Move = null;
             chessboard.State.CapturedPiece = null;
             chessboard.State.EnPassantSquare = null;
+            chessboard.State.HalfMoveClock = chessboard.stateStack.ElementAt(0).HalfMoveClock; // restore the halfmove to the state of the previous turn(end) before we play
             // TODO: other fields... maybe implement method to reset ?
 
             // TODO: implemented promotion unmake, en passant unmake and castling unmake
@@ -387,7 +396,10 @@ namespace ChessEngine {
                     break;
                 }
             }
-            // restore captured piece
+
+            // TODO: restore promotion piece to pawn
+            
+            // restore captured? piece
             if (latestState.CapturedPiece.HasValue) {
                 PieceType capturedPiece = (PieceType)latestState.CapturedPiece;
                 //restore captured piece

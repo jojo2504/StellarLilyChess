@@ -47,7 +47,7 @@ namespace ChessEngine {
     }
 
     //just a simple reference wrapper class
-    public class RefBitboard {
+    public sealed class RefBitboard {
         public Bitboard BitboardValue;
     }
 
@@ -99,7 +99,8 @@ namespace ChessEngine {
         public State State = new();
         public Stack<State> stateStack = new();
 
-        public Chessboard() {
+        public Chessboard(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
+            ParseFEN(fen);
             InitializeState();
             stateStack.Push(State); // halfmove 0
 
@@ -107,31 +108,101 @@ namespace ChessEngine {
         }
 
         void InitializeState() {
-            State.TurnColor = TurnColor.White;
-            State.CanBlackKingCastle = true;
-            State.CanBlackQueenCastle = true;
-            State.CanWhiteKingCastle = true;
-            State.CanWhiteQueenCastle = true;
-            State.FullMoveNumber = 0;
-            State.HalfMoveClock = 0;
             State.Checkmated = false;
             State.Stalemated = false;
+            State.OwnKingInCheck = false; // (might be temp)
+            State.EnemyKingInCheck = false; // (might be temp)
+        }
+
+        void ParseFEN(string fen) {
+            var pieceSetters = new Dictionary<char, Action<int>> {
+                { 'P', idx => WhitePawns.BitboardValue |= 1UL << idx },
+                { 'N', idx => WhiteKnights.BitboardValue |= 1UL << idx },
+                { 'B', idx => WhiteBishops.BitboardValue |= 1UL << idx },
+                { 'R', idx => WhiteRooks.BitboardValue |= 1UL << idx },
+                { 'Q', idx => WhiteQueens.BitboardValue |= 1UL << idx },
+                { 'K', idx => WhiteKing.BitboardValue |= 1UL << idx },
+                { 'p', idx => BlackPawns.BitboardValue |= 1UL << idx },
+                { 'n', idx => BlackKnights.BitboardValue |= 1UL << idx },
+                { 'b', idx => BlackBishops.BitboardValue |= 1UL << idx },
+                { 'r', idx => BlackRooks.BitboardValue |= 1UL << idx },
+                { 'q', idx => BlackQueens.BitboardValue |= 1UL << idx },
+                { 'k', idx => BlackKing.BitboardValue |= 1UL << idx },
+            };
+
+            var parts = fen.Split(" ");
+
+            var piecePlacement = parts[0];
+            var turnColor = parts[1];
+            var castlingAbility = parts[2];
+            var epSquare = parts[3];
+            var halfMove = parts[4];
+            var FullMove = parts[5];
+
+            // init state
+            if (turnColor == "w") State.TurnColor = TurnColor.White;
+            else if (turnColor == "b") State.TurnColor = TurnColor.Black;
+
+            State.CanBlackKingCastle = false;
+            State.CanBlackQueenCastle = false;
+            State.CanWhiteKingCastle = false;
+            State.CanWhiteQueenCastle = false;
+            foreach (var letter in castlingAbility) {
+                switch (letter) {
+                    case 'K':
+                        State.CanWhiteKingCastle = true;
+                        break;
+                    case 'Q':
+                        State.CanWhiteQueenCastle = true;
+                        break;
+                    case 'k':
+                        State.CanBlackKingCastle = true;
+                        break;
+                    case 'q':
+                        State.CanBlackQueenCastle = true;
+                        break;
+                }
+            }
+
+            if (Enum.TryParse<Square>(epSquare, out var square))
+                State.EnPassantSquare = square;
+            else
+                State.EnPassantSquare = null;
+
+            State.HalfMoveClock = Convert.ToInt32(halfMove);
+            State.FullMoveNumber = Convert.ToInt32(FullMove);
+
+            WhitePawns = new() { BitboardValue = 0UL };
+            WhiteRooks = new() { BitboardValue = 0UL };
+            WhiteKnights = new() { BitboardValue = 0UL };
+            WhiteBishops = new() { BitboardValue = 0UL };
+            WhiteQueens = new() { BitboardValue = 0UL };
+            WhiteKing = new() { BitboardValue = 0UL };
+            BlackPawns = new() { BitboardValue = 0UL };
+            BlackRooks = new() { BitboardValue = 0UL };
+            BlackKnights = new() { BitboardValue = 0UL };
+            BlackBishops = new() { BitboardValue = 0UL };
+            BlackQueens = new() { BitboardValue = 0UL };
+            BlackKing = new() { BitboardValue = 0UL };
+
+            var ranks = piecePlacement.Split("/");
+            var overallIndexSquare = 0;
+            foreach (var rank in ranks) {
+                for (int i = rank.Length - 1; i >= 0; i--) {
+                    var letter = rank[i];
+                    if (char.IsDigit(letter)) {
+                        overallIndexSquare += letter - '0';
+                        break;
+                    }
+                    else if (pieceSetters.TryGetValue(letter, out var setPiece)) {
+                        setPiece(63 - overallIndexSquare); // or whatever your index calculation is
+                        overallIndexSquare++;
+                    }
+                }
+            }
         }
 
         void InitializeChessBoard() {
-            WhitePawns = new() { BitboardValue = 65280UL };
-            WhiteRooks = new() { BitboardValue = 129UL };
-            WhiteKnights = new() { BitboardValue = 66UL };
-            WhiteBishops = new() { BitboardValue = 36UL };
-            WhiteQueens = new() { BitboardValue = 8UL };
-            WhiteKing = new() { BitboardValue = 16UL };
-            BlackPawns = new() { BitboardValue = 71776119061217280UL };
-            BlackRooks = new() { BitboardValue = 9295429630892703744UL };
-            BlackKnights = new() { BitboardValue = 4755801206503243776UL };
-            BlackBishops = new() { BitboardValue = 2594073385365405696UL };
-            BlackQueens = new() { BitboardValue = 576460752303423488UL };
-            BlackKing = new() { BitboardValue = 1152921504606846976UL };
-
             Position[(int)TurnColor.White, (int)PieceType.Pawn] = WhitePawns;
             Position[(int)TurnColor.White, (int)PieceType.Rook] = WhiteRooks;
             Position[(int)TurnColor.White, (int)PieceType.Knight] = WhiteKnights;
@@ -208,7 +279,8 @@ namespace ChessEngine {
             }
         }
 
-        // for all pieces, move/attack are the same, except for the pawn, which can attack but not move if the square is empty or has an ally piece. 
+        // for all pieces, move/attack are the same, except for the pawn, which can attack but not move if the square is empty or has an ally piece.
+        // except for king which can't castle for direct attack pattern
         void PopulatePieceAttacks(int colorIndex, int pieceTypeIndex) {
             var pieceBitboard = Position[colorIndex, pieceTypeIndex].BitboardValue;
             var squares = BitOperations.GetSquaresFromBits(pieceBitboard);
@@ -247,31 +319,23 @@ namespace ChessEngine {
                     break;
                 case PieceType.King:
                     foreach (var square in squares) {
-                        var possibleAttacks = King.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
+                        var possibleAttacks = King.ComputePossibleAttacks(square, this, (TurnColor)colorIndex);
                         AttackMatrix[colorIndex, (int)PieceType.King] |= possibleAttacks;
                     }
                     break;
             }
         }
 
-        public List<Move> GenerateMoves(TurnColor? turnColor = null) {
+        public List<Move> GenerateMoves() {
             List<Move> allPseudoLegalMoves = new();
 
-            if (turnColor is not null) {
-                for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
-                    //int localPieceTypeIndex = pieceTypeIndex; // capture the value otherwise the Task just skips it and we'll have an index error
-                    GetAllPossiblePieceMoves((int)turnColor, pieceTypeIndex, ref allPseudoLegalMoves);
-                }
+            // first opponant color, then own color to check for attacked/unattacked squares => populate the attack matrix
+            for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
+                PopulatePieceAttacks((int)State.TurnColor ^ 1, pieceTypeIndex);
             }
-            else {
-                // first opponant color, then own color to check for attacked/unattacked squares => populate the attack matrix
-                for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
-                    PopulatePieceAttacks((int)State.TurnColor ^ 1, pieceTypeIndex);
-                }
 
-                for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
-                    GetAllPossiblePieceMoves((int)State.TurnColor, pieceTypeIndex, ref allPseudoLegalMoves);
-                }
+            for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
+                GetAllPossiblePieceMoves((int)State.TurnColor, pieceTypeIndex, ref allPseudoLegalMoves);
             }
 
             return allPseudoLegalMoves;
@@ -287,11 +351,11 @@ namespace ChessEngine {
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
                 if (!IsIncheck()) {
-                    Logger.Log($"KING POSITION IS NOT IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
+                    //Logger.Log($"KING POSITION IS NOT IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
                     LegalMoves.AddRange(allPseudoLegalMoves[i]);
                 }
                 else {
-                    Logger.Log($"KING POSITION IS IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
+                    //Logger.Log($"KING POSITION IS IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
                 }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
             }
@@ -310,17 +374,21 @@ namespace ChessEngine {
         }
 
         //check if the king from a color is in check
-        public bool IsIncheck() {
+        public bool IsIncheck(TurnColor? turncolor = null) {
             Bitboard AllAttackedSquares;
 
-            if (stateStack.ElementAt(0).TurnColor == TurnColor.White) {
+            if ((turncolor ?? stateStack.ElementAt(0).TurnColor) == TurnColor.White) {
                 //check if white king is in check
                 AllAttackedSquares = GenerateAttacks(TurnColor.Black);
+                Logger.Log("black attacks squares");
+                Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
                 return (AllAttackedSquares & WhiteKing.BitboardValue) != 0;
             }
             else {
                 //check if black king is in check
                 AllAttackedSquares = GenerateAttacks(TurnColor.White);
+                Logger.Log("white attacks squares");
+                Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
                 return (AllAttackedSquares & BlackKing.BitboardValue) != 0;
             }
         }
@@ -352,6 +420,10 @@ namespace ChessEngine {
             return false;
         }
 
+        public bool AreSquaresOccupiedByColor(Square[] squares, TurnColor turnColor) {
+            return false;
+        }
+
         public ulong Perft(int depth) {
             int nMoves, i;
             ulong nodes = 0;
@@ -372,7 +444,7 @@ namespace ChessEngine {
         }
 
         public void PushUci(string move) {
-            Move.MakeMove(this, Move.DecodeUciMove(this, move), displayComputationLogs: true);
+            Move.MakeMove(this, Move.DecodeUciMove(this, move));
         }
     }
 }
