@@ -3,10 +3,10 @@ using ChessEngine.Utils.Logging;
 
 namespace test;
 
-public class UnitTest1 {
+public class TestGames {
     [Fact]
     public void TestGame1() {
-        var gameRecord = System.IO.File.ReadLines(@$"{AppDomain.CurrentDomain.BaseDirectory}/records/gamebugged.txt");
+        var gameRecord = System.IO.File.ReadLines(@$"{AppDomain.CurrentDomain.BaseDirectory}/Records/gamebugged.txt");
         var bugged = false;
         // iterate through each element within the array and
         // print it out

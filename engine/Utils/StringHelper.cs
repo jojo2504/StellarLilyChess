@@ -40,8 +40,12 @@ namespace ChessEngine.Utils {
             return result.ToString();
         }
 
-        public static string FormatAsChessboard(Bitboard number) {
-            return FormatAsChessboard(ToBinary(number));
+        public static string FormatAsChessboard(Bitboard bitboard) {
+            return FormatAsChessboard(ToBinary(bitboard));
+        }
+
+        public static string FormatAsChessboard(RefBitboard refBitboard) {
+            return FormatAsChessboard(ToBinary(refBitboard.BitboardValue));
         }
     }
 }

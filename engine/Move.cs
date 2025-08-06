@@ -304,15 +304,16 @@ namespace ChessEngine {
                         }
 
                         // push into state (temp) if enemy king is in check
-                        Logger.Log("chessboard after move");
-                        Logger.Log(chessboard);
+                        //Logger.Log("chessboard after move");
+                        //Logger.Log(chessboard);
 
-                        Logger.Log("all piece");
-                        Logger.Log(StringHelper.FormatAsChessboard(chessboard.AllPieces));
+                        //Logger.Log("all piece");
+                        //Logger.Log(StringHelper.FormatAsChessboard(chessboard.AllPieces));
 
                         chessboard.State.OwnKingInCheck = chessboard.IsIncheck(chessboard.State.TurnColor);
                         chessboard.State.EnemyKingInCheck = chessboard.IsIncheck(chessboard.State.TurnColor ^ TurnColor.Black);
 
+                        //Logger.Log(chessboard.State);
                         //push the current state of the position onto the stack
                         chessboard.stateStack.Push(chessboard.State);
 

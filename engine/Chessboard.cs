@@ -192,7 +192,6 @@ namespace ChessEngine {
                     var letter = rank[i];
                     if (char.IsDigit(letter)) {
                         overallIndexSquare += letter - '0';
-                        break;
                     }
                     else if (pieceSetters.TryGetValue(letter, out var setPiece)) {
                         setPiece(63 - overallIndexSquare); // or whatever your index calculation is
@@ -232,7 +231,7 @@ namespace ChessEngine {
             ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackBishops.BitboardValue).Replace('1', 'b'), ChessBoardState);
             ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackQueens.BitboardValue).Replace('1', 'q'), ChessBoardState);
             ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackKing.BitboardValue).Replace('1', 'k'), ChessBoardState);
-            return StringHelper.FormatAsChessboard(ChessBoardState.Replace('0', ' '));
+            return StringHelper.FormatAsChessboard(ChessBoardState.Replace('0', '.'));
         }
 
         void GetAllPossiblePieceMoves(int colorIndex, int pieceTypeIndex, ref List<Move> allPseudoLegalMoves) {
@@ -377,18 +376,33 @@ namespace ChessEngine {
         public bool IsIncheck(TurnColor? turncolor = null) {
             Bitboard AllAttackedSquares;
 
-            if ((turncolor ?? stateStack.ElementAt(0).TurnColor) == TurnColor.White) {
+            if ((turncolor ?? State.TurnColor) == TurnColor.White) {
                 //check if white king is in check
                 AllAttackedSquares = GenerateAttacks(TurnColor.Black);
-                Logger.Log("black attacks squares");
-                Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
+                //Logger.Log("black attacks squares");
+                //Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
                 return (AllAttackedSquares & WhiteKing.BitboardValue) != 0;
             }
             else {
                 //check if black king is in check
+                Logger.Log("checking if black king is in check");
+                Logger.Log("current chessboard");
+                Logger.Log(this);
+
                 AllAttackedSquares = GenerateAttacks(TurnColor.White);
                 Logger.Log("white attacks squares");
                 Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
+
+                Logger.Log("black king bitboard value");
+                Logger.Log(StringHelper.FormatAsChessboard(Position[(int)TurnColor.Black, (int)PieceType.King]));
+
+                Logger.Log("is in check ?");
+                bool isInCheck = (AllAttackedSquares & BlackKing.BitboardValue) != 0;
+                if (isInCheck)
+                    Logger.Log("isInCheck = yes");
+                else
+                    Logger.Log("isInCheck = no");
+
                 return (AllAttackedSquares & BlackKing.BitboardValue) != 0;
             }
         }
@@ -433,13 +447,27 @@ namespace ChessEngine {
 
             List<Move> allPseudoLegalMoves = GenerateMoves();
             nMoves = allPseudoLegalMoves.Count;
+            //Logger.Log(nMoves);
+
             for (i = 0; i < nMoves; i++) {
+                Logger.Log("trying to do this move:", allPseudoLegalMoves[i]);
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsIncheck()) {
+                bool isInCheck = IsIncheck();
+                Logger.Log("returned isInCheck =", isInCheck);
+                if (!isInCheck) {
+                    Logger.Log("made move because black king not in check after", allPseudoLegalMoves[i]);
+                    Logger.Log(this);
+                    Logger.Log("---------------------------");
                     nodes += Perft(depth - 1);
+                }
+                else {
+                    Logger.Log($"skipped {allPseudoLegalMoves[i]} because it leaves the king in check");
                 }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
             }
+
+            //Logger.Log("got", nodes);
+
             return nodes;
         }
 
