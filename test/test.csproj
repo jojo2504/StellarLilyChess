@@ -29,6 +29,9 @@
     <Content Include="..\engine\Records\*.*">
       <CopyToOutputDirectory>False</CopyToOutputDirectory>
     </Content>
+    <Content Include="..\engine\Config\*.*">
+      <CopyToOutputDirectory>False</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>  
 
 </Project>

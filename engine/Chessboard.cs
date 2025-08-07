@@ -398,12 +398,9 @@ namespace ChessEngine {
 
                 Logger.Log("is in check ?");
                 bool isInCheck = (AllAttackedSquares & BlackKing.BitboardValue) != 0;
-                if (isInCheck)
-                    Logger.Log("isInCheck = yes");
-                else
-                    Logger.Log("isInCheck = no");
+                Logger.Log(isInCheck);
 
-                return (AllAttackedSquares & BlackKing.BitboardValue) != 0;
+                return isInCheck;
             }
         }
 
@@ -452,9 +449,9 @@ namespace ChessEngine {
             for (i = 0; i < nMoves; i++) {
                 Logger.Log("trying to do this move:", allPseudoLegalMoves[i]);
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                bool isInCheck = IsIncheck();
-                Logger.Log("returned isInCheck =", isInCheck);
-                if (!isInCheck) {
+                bool isInCheckPerft = IsIncheck(stateStack.ElementAt(0).TurnColor);
+                Logger.Log("returned isInCheck", isInCheckPerft);
+                if (!isInCheckPerft) {
                     Logger.Log("made move because black king not in check after", allPseudoLegalMoves[i]);
                     Logger.Log(this);
                     Logger.Log("---------------------------");
