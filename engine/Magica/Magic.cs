@@ -34,11 +34,11 @@ namespace ChessEngine.Magica {
                 return magicTable;
             }
             catch (FileNotFoundException ex) {
-                Logger.Log(ex.Message);
+                Logger.Log(Channel.General, ex.Message);
                 return null;
             }
             catch (JsonException ex) {
-                Logger.Log($"Error parsing JSON: {ex.Message}");
+                Logger.Log(Channel.General, $"Error parsing JSON: {ex.Message}");
                 return null;
             }
         }

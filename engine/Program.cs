@@ -5,10 +5,10 @@ namespace ChessEngine {
         static void Main(string[] args) {
             try {
                 var protocol = Console.ReadLine();
-                Logger.Log(protocol);
+                Logger.Log([Channel.General, Channel.Game], protocol);
 
                 if (protocol != "uci") {
-                    Logger.Log($"Using something else than uci protocol: {protocol}");
+                    Logger.Log([Channel.General, Channel.Game], $"Using something else than uci protocol: {protocol}");
                     return;
                 }
 
@@ -25,7 +25,7 @@ namespace ChessEngine {
                 gameManager.StartGame();
             }
             catch (Exception e) {
-                Logger.Log(e);
+                Logger.Log([Channel.General, Channel.Game], e);
             }
         }
     }

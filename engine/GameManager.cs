@@ -16,17 +16,17 @@ namespace ChessEngine {
         }
 
         public void StartGame() {
-            Logger.Log("starting game");
+            Logger.Log(Channel.Game, "starting game");
             while (true) {
                 var input = Console.ReadLine();
                 string[] parts = input.Split(' ');
                 command = parts[0];
                 remaining = parts.Skip(1).ToArray();
 
-                Logger.Log(command);
+                Logger.Log(Channel.Game, command);
 
                 if (command == "quit") {
-                    Logger.Log("quitting");
+                    Logger.Log(Channel.Game, "quitting");
                     break;
                 }
 
@@ -38,16 +38,16 @@ namespace ChessEngine {
                 else if (command == "position") {
                     // should reconstruct the whole game before continuing (optional)
 
-                    Logger.Log($"Received {remaining[remaining.Length - 1]}");
+                    Logger.Log(Channel.Game, $"Received {remaining[remaining.Length - 1]}");
                     chessboard.PushUci(remaining[remaining.Length - 1]);
-                    Logger.Log(chessboard.ToString());
+                    Logger.Log(Channel.Game, chessboard.ToString());
 
-                    Logger.Log("new finished (stack):");
-                    Logger.Log(chessboard.stateStack.ElementAt(0));
+                    Logger.Log(Channel.Game, "new finished (stack):");
+                    Logger.Log(Channel.Game, chessboard.stateStack.ElementAt(0));
 
-                    Logger.Log("------------------------");
-                    Logger.Log("preview of next turn state (unfinished)");
-                    Logger.Log(chessboard.State);
+                    Logger.Log(Channel.Game, "------------------------");
+                    Logger.Log(Channel.Game, "preview of next turn state (unfinished)");
+                    Logger.Log(Channel.Game, chessboard.State);
                 }
 
                 // should start with white, compute move as white, then change the turn color after the 
@@ -55,9 +55,9 @@ namespace ChessEngine {
                     List<Move> allLegalMoves = chessboard.GenerateLegalMoves();
                     int nMoves = allLegalMoves.Count;
 
-                    /*Logger.Log($"{nMoves} possible moves");
+                    /*Logger.Log(Channel.Game, $"{nMoves} possible moves");
                     foreach (Move legalMove in allLegalMoves) {
-                        Logger.Log(legalMove);
+                        Logger.Log(Channel.Game, legalMove);
                     }*/
 
                     Random random = new();
@@ -65,15 +65,15 @@ namespace ChessEngine {
                     Move move = allLegalMoves[r];
 
                     Move.MakeMove(chessboard, move);
-                    Logger.Log($"Playing {move.ToString().ToLower()}");
-                    Logger.Log(chessboard.ToString());
+                    Logger.Log(Channel.Game, $"Playing {move.ToString().ToLower()}");
+                    Logger.Log(Channel.Game, chessboard.ToString());
 
-                    Logger.Log("new finished (stack):");
-                    Logger.Log(chessboard.stateStack.ElementAt(0));
+                    Logger.Log(Channel.Game, "new finished (stack):");
+                    Logger.Log(Channel.Game, chessboard.stateStack.ElementAt(0));
 
-                    Logger.Log("-------------------------------------------------");
-                    Logger.Log("preview of next turn state (unfinished)");
-                    Logger.Log(chessboard.State);
+                    Logger.Log(Channel.Game, "-------------------------------------------------");
+                    Logger.Log(Channel.Game, "preview of next turn state (unfinished)");
+                    Logger.Log(Channel.Game, chessboard.State);
 
                     Console.WriteLine($"bestmove {move.ToString().ToLower()}");
                 }

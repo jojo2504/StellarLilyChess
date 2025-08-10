@@ -21,9 +21,8 @@ namespace ChessEngine.Utils {
         public static int CountBits(Bitboard number) {
             int count = 0;
             while (number != 0) {
-                if ((number & 1) == 1)
-                    count++;
-                number >>= 1;
+                number &= number - 1; // Clear the least significant bit set
+                count++;
             }
             return count;
         }
@@ -49,16 +48,12 @@ namespace ChessEngine.Utils {
             return pos;
         }
 
-        public static int RightestBitPosition(Bitboard bitboard) {
-            return System.Numerics.BitOperations.TrailingZeroCount(bitboard);
-        }
-
         public static Bitboard IndexToBitboard(int index, int bits, Bitboard m) {
             int i, j;
             Bitboard result = 0UL;
-            for(i = 0; i < bits; i++) {
+            for (i = 0; i < bits; i++) {
                 j = pop_1st_bit(ref m);
-                if((index & (1 << i)) != 0) result |= (1UL << j);
+                if ((index & (1 << i)) != 0) result |= (1UL << j);
             }
             return result;
         }
@@ -66,30 +61,36 @@ namespace ChessEngine.Utils {
         public static List<Square> GetSquaresFromBits(Bitboard bitboard) {
             List<Square> result = new();
 
-            int index = 0;
             while (bitboard != 0) {
-                if ((bitboard & 1) == 1)
-                    result.Add((Square)index);
-                bitboard >>= 1;
-                index += 1;
+                int lsbIndex = System.Numerics.BitOperations.TrailingZeroCount(bitboard);
+                result.AddRange((Square)lsbIndex);
+                bitboard &= bitboard - 1; // Clear the least significant bit set
             }
 
             return result;
         }
 
+        public static Bitboard ToBitboard(int index) {
+            return indexedBitboard[index];
+        }
         public static Bitboard ToBitboard(Square square) {
             return indexedBitboard[(int)square];
         }
 
         public static Bitboard ToBitboard(Square? square) {
-            if (square is not null) {
+            if (square.HasValue) {
                 return indexedBitboard[(int)square];
             }
             return 0UL;
         }
 
         public static Square ToSquare(Bitboard bitboard) {
-            return (Square)System.Numerics.BitOperations.TrailingZeroCount(bitboard);
+            var zeroCount = System.Numerics.BitOperations.TrailingZeroCount(bitboard);
+            if (zeroCount < 0 || zeroCount > 63) {
+                Logger.Warning(Channel.General, "bitboard value should not be 0UL");
+                return (Square)64;
+            }
+            return (Square)zeroCount;
         }
     }
 }

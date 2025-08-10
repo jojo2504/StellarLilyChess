@@ -1,5 +1,7 @@
 {
-    "Logger" : {
-        "active": false
-    }
+  "Channels": {
+    "General": { "Active": false },
+    "Debug":   { "Active": false },
+    "Game":    { "Active": false }
+  }
 }

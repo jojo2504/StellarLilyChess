@@ -35,7 +35,7 @@ namespace ChessEngine.Pieces {
             if ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) {
                 if (chessboard.State.CanWhiteKingCastle &
                 !chessboard.AreSquaresAttackedByColor([Square.E1, Square.F1, Square.G1], TurnColor.Black) &
-                !chessboard.AreSquaresOccupiedByColor([Square.E1, Square.F1, Square.G1], TurnColor.White)) {
+                !chessboard.AreAnySquaresOccupiedByColor([Square.E1, Square.F1, Square.G1], TurnColor.White)) {
                     castle_king = kingLocation << 2;
                 }
                 else if (chessboard.State.CanWhiteQueenCastle &
