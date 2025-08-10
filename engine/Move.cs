@@ -1,6 +1,7 @@
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
 using Bitboard = ulong;
+using ChessEngine.Pieces;
 
 namespace ChessEngine {
 
@@ -29,18 +30,37 @@ namespace ChessEngine {
             }
         }
 
+        public bool CASTLE_FLAG {
+            get {
+                // return true if the 2th bit of the nibble is 1 and the 4th is 0
+                return ((word >> 1) & 1) == 1 && !PROMOTION_FLAG;
+            }
+        }
+
         public bool CAPTURE_FLAG {
             get {
-                // return true if the 3th bit of the nibble is 1 
+                // return true if the 3th bit of the nibble is 1
                 return ((word >> 2) & 1) == 1;
+            }
+        }
+
+        public bool PROMOTION_FLAG {
+            get {
+                // return true if the 4th bit of the nibble is 1
+                return ((word >> 3) & 1) == 1;
             }
         }
 
         //example: A1A2
         public override string ToString() {
+            char promoKey;
             if (CAPTURE_FLAG)
-                return $"{From}{To}{promotionDict.FirstOrDefault(x => x.Value == (byte)(SpecialMovesCode)SpecialCode-4).Key}";
-            return $"{From}{To}{promotionDict.FirstOrDefault(x => x.Value == (byte)(SpecialMovesCode)SpecialCode).Key}";
+                promoKey = Pawn.PromotionDict.FirstOrDefault(x => x.Value == (byte)(SpecialMovesCode)SpecialCode - 4).Key;
+            else
+                promoKey = Pawn.PromotionDict.FirstOrDefault(x => x.Value == (byte)(SpecialMovesCode)SpecialCode).Key;
+            if (promoKey == '\0')
+                return $"{From}{To}".ToLower();
+            return $"{From}{To}{promoKey}".ToLower();
         }
 
         //if the code is not 0, then it's an irreversible move, except for regular pawn push
@@ -61,49 +81,22 @@ namespace ChessEngine {
             QueenPromotionCapture = 15
         }
 
-        static readonly Dictionary<string, int> promotionDict = new() {
-            {"n", (byte)SpecialMovesCode.KnightPromotion},
-            {"b", (byte)SpecialMovesCode.BishopPromotion},
-            {"r", (byte)SpecialMovesCode.RookPromotion},
-            {"q", (byte)SpecialMovesCode.QueenPromotion},
-        };
-
-        public static void EncodePossibleMoves(Bitboard possibleMoves, Square fromSquare, ref List<Move> allPseudoLegalMoves) {
-            int index = 0;
+        public static List<string> GetUcis(Bitboard possibleMoves, Square fromSquare) {
+            List<string> ucis = [];
             while (possibleMoves != 0) {
-                if ((possibleMoves & 1) == 1) {
-                    var move = EncodeMove(fromSquare, (Square)index, 0);
-                    allPseudoLegalMoves.AddRange(move);
-                }
-                index++;
-                possibleMoves >>= 1;
+                int lsbIndex = System.Numerics.BitOperations.TrailingZeroCount(possibleMoves);
+                ucis.AddRange($"{fromSquare}{(Square)lsbIndex}".ToLower());
+                possibleMoves &= possibleMoves - 1; // Clear the least significant bit set
             }
-        }
-
-        //16 bits
-        //6 from
-        //6 to
-        //4 nibble
-        // from 10 -> 001010
-        // to 18 -> 010010
-        // code 0 -> 0000
-        // 001010_010010_0000
-        // 111111_000000_0000 | 0xFC00
-        // 0xFFF  0xF
-        public static Move EncodeMove(Square from, Square to, byte specialMovesCode) {
-            ushort word = (ushort)((ushort)(((int)from) << 10) | (ushort)(((int)to) << 4) | (specialMovesCode & 0xF));
-
-            //Logger.Log($"{(int)from}, {(int)to}");
-            //Logger.Log($"{(Square)((word & 0xFC00) >> 10)}{(Square)((word & 0x3F0) >> 4)}");
-            return new Move(word);
+            return ucis;
         }
 
         public static Move DecodeUciMove(Chessboard chessboard, string UciMove) {
-            Logger.Log("decoding uci", UciMove);
+            //Logger.Log("decoding uci", UciMove);
             var fromCode = UciMove.Substring(0, 2);
             var toCode = UciMove.Substring(2, 2);
-            string? promotion = null;
-            if (UciMove.Length == 5) promotion = UciMove[^1].ToString();
+            char? promotionChar = null;
+            if (UciMove.Length == 5) promotionChar = UciMove[^1];
 
             var fromSquare = Enum.Parse<Square>(fromCode.ToUpper());
             var toSquare = Enum.Parse<Square>(toCode.ToUpper());
@@ -120,8 +113,8 @@ namespace ChessEngine {
                     switch ((PieceType)pieceTypeIndex) {
                         case PieceType.Pawn:
                             // promotion and capture? or en passant
-                            if (promotion is not null) {
-                                smc += (byte)promotionDict[promotion];
+                            if (promotionChar.HasValue) {
+                                smc += Pawn.PromotionDict[(char)promotionChar];
                             }
                             if (Math.Abs((int)fromSquare - (int)toSquare) == 16) {
                                 smc = (byte)SpecialMovesCode.DoublePawnPush;
@@ -148,7 +141,7 @@ namespace ChessEngine {
                     }
                 }
             }
-            Logger.Log((SpecialMovesCode)smc);
+            //Logger.Log((SpecialMovesCode)smc);
 
             word |= (ushort)(smc & 0xF);
 
@@ -156,13 +149,17 @@ namespace ChessEngine {
         }
 
         public static void MakeMove(Chessboard chessboard, Move move) {
+            if (chessboard.stateStack.Count == 0) {
+                Logger.Fatal(Channel.Debug, "SHOULD NOT BE 0 WHAT");
+            }
+
             var bitboardFrom = BitOperations.ToBitboard(move.From);
             var bitboardTo = BitOperations.ToBitboard(move.To);
 
             chessboard.State.Move = move;
 
             // precheck castling
-            if (move.SpecialCode == (int)SpecialMovesCode.KingCastle || move.SpecialCode == (int)SpecialMovesCode.QueenCastle) {
+            if (move.CASTLE_FLAG) {
                 chessboard.State.HalfMoveClock++;
                 chessboard.stateStack.Push(chessboard.State);
 
@@ -229,7 +226,6 @@ namespace ChessEngine {
                         if ((chessboard.AllPieces & bitboardTo) == 0) {
                             if (pieceTypeIndex == (int)PieceType.Pawn) {
                                 chessboard.State.HalfMoveClock = 0;
-
                                 // check promotion
                                 switch (move.SpecialCode) {
                                     case (int)SpecialMovesCode.BishopPromotion:
@@ -278,12 +274,12 @@ namespace ChessEngine {
                                     switch (move.SpecialCode) {
                                         case (int)SpecialMovesCode.BishopPromotionCapture:
                                             chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardTo; // remove promoting pawn
-                                            chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight].BitboardValue ^= bitboardTo; // spawn new knight
+                                            chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop].BitboardValue ^= bitboardTo; // spawn new knight
                                             break;
 
                                         case (int)SpecialMovesCode.KnightPromotionCapture:
                                             chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardTo; // remove promoting pawn
-                                            chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop].BitboardValue ^= bitboardTo; // spawn new bishop
+                                            chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight].BitboardValue ^= bitboardTo; // spawn new bishop
                                             break;
 
                                         case (int)SpecialMovesCode.RookPromotionCapture:
@@ -297,7 +293,7 @@ namespace ChessEngine {
                                             break;
                                     }
 
-                                    // update chessboard state 
+                                    // update chessboard state
                                     chessboard.State.CapturedPiece = (PieceType)opponantPieceTypeIndex;
                                 }
                             }
@@ -351,7 +347,7 @@ namespace ChessEngine {
                                     else {
                                         chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) << 8);
                                     }
-                                    Logger.Log("Setting en passant on square:", chessboard.State.EnPassantSquare);
+                                    //Logger.Log(Channel.Debug, "Setting en passant on square:", chessboard.State.EnPassantSquare);
                                 }
                                 break;
                         }
@@ -360,10 +356,12 @@ namespace ChessEngine {
                 }
             }
 
-            // the state has been pushed above with their respective conditions and follow ups 
-
             chessboard.State.TurnColor ^= TurnColor.Black; // toggle color
             chessboard.State.Move = null; // reset the state move for the next state
+
+            if (chessboard.stateStack.Count < 2) {
+                Logger.Fatal(Channel.Debug, $"{chessboard.stateStack.Count} ?");
+            }
         }
 
         public static void UnmakeMove(Chessboard chessboard, Move move) {
@@ -377,11 +375,8 @@ namespace ChessEngine {
             // this means that every state is back to default except the color which goes back to before the makemove
             chessboard.State.Move = null;
             chessboard.State.CapturedPiece = null;
-            chessboard.State.EnPassantSquare = null;
+            chessboard.State.EnPassantSquare = chessboard.stateStack.ElementAt(0).EnPassantSquare;
             chessboard.State.HalfMoveClock = chessboard.stateStack.ElementAt(0).HalfMoveClock; // restore the halfmove to the state of the previous turn(end) before we play
-            // TODO: other fields... maybe implement method to reset ?
-
-            // TODO: implemented promotion unmake, en passant unmake and castling unmake
 
             // restore castling right
             chessboard.State.CanWhiteKingCastle = latestState.CanWhiteKingCastle;
@@ -389,24 +384,74 @@ namespace ChessEngine {
             chessboard.State.CanBlackKingCastle = latestState.CanBlackKingCastle;
             chessboard.State.CanBlackQueenCastle = latestState.CanBlackQueenCastle;
 
-            // restore last moved piece from latestState
-            foreach (var pieceBitboard in chessboard.Position) {
-                if ((pieceBitboard.BitboardValue & bitboardTo) != 0) {
-                    pieceBitboard.BitboardValue ^= bitboardFrom;
-                    pieceBitboard.BitboardValue ^= bitboardTo;
-                    break;
+            // TODO: implemented promotion unmake, en passant unmake and castling unmake
+            if (move.PROMOTION_FLAG) {
+                if (move.CAPTURE_FLAG) { // restore captured piece
+                    chessboard.Position[(int)latestState.TurnColor ^ 1, (int)latestState.CapturedPiece!].BitboardValue ^= bitboardTo;
+                }
+                //remove new piece
+                for (int pieceTypeIndex = 0; pieceTypeIndex < chessboard.Position.GetLength(1); pieceTypeIndex++) {
+                    if ((chessboard.Position[(int)latestState.TurnColor, pieceTypeIndex].BitboardValue & bitboardTo) != 0) {
+                        chessboard.Position[(int)latestState.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardTo;
+                        break;
+                    }
+                }
+                //restore pawn
+                chessboard.Position[(int)latestState.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom;
+            }
+
+            else if (move.CASTLE_FLAG) {
+                chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.King].BitboardValue ^= bitboardFrom; // restore previous position
+                chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.King].BitboardValue ^= bitboardTo;
+
+                //precheck castle => jump the rook over the king
+                if (move.SpecialCode == (int)SpecialMovesCode.KingCastle) {
+                    if (chessboard.State.TurnColor == TurnColor.White) {
+                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.F1); // remove old position
+                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.H1); // set new position
+                    }
+                    else {
+                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.F8); // remove old position
+                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.H8); // set new position
+                    }
+                }
+                else if (move.SpecialCode == (int)SpecialMovesCode.QueenCastle) {
+                    if (chessboard.State.TurnColor == TurnColor.White) {
+                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.D1); // remove old position
+                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.A1); // set new position
+                    }
+                    else {
+                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.D8); // remove old position
+                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.A8); // set new position
+                    }
                 }
             }
 
-            // TODO: restore promotion piece to pawn
-            
-            // restore captured? piece
-            if (latestState.CapturedPiece.HasValue) {
-                PieceType capturedPiece = (PieceType)latestState.CapturedPiece;
-                //restore captured piece
-                chessboard.Position[(int)latestState.TurnColor ^ 1, (int)capturedPiece].BitboardValue |= bitboardTo;
+            else if (chessboard.stateStack.ElementAt(0).EnPassantSquare.HasValue) {
+                chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom;
+                chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardTo;
+                if (chessboard.State.TurnColor == TurnColor.White) {
+                    chessboard.Position[(int)TurnColor.Black, (int)PieceType.Pawn].BitboardValue ^= bitboardTo >> 8;
+                }
+                else {
+                    chessboard.Position[(int)TurnColor.Black, (int)PieceType.Pawn].BitboardValue ^= bitboardTo << 8;
+                }
+            }
 
-                //Logger.Log($"restored {capturedPiece} on {BitOperations.ToSquare(bitboardTo)} from {BitOperations.ToSquare(bitboardFrom)}");
+            else {
+                // restore last moved piece from latestState
+                foreach (var pieceBitboard in chessboard.Position) {
+                    if ((pieceBitboard.BitboardValue & bitboardTo) != 0) {
+                        pieceBitboard.BitboardValue ^= bitboardFrom;
+                        pieceBitboard.BitboardValue ^= bitboardTo;
+                        break;
+                    }
+                }
+                if (latestState.CapturedPiece.HasValue) {
+                    PieceType capturedPiece = (PieceType)latestState.CapturedPiece;
+                    chessboard.Position[(int)latestState.TurnColor ^ 1, (int)capturedPiece].BitboardValue ^= bitboardTo;
+                    //Logger.Log($"restored {capturedPiece} on {BitOperations.ToSquare(bitboardTo)} from {BitOperations.ToSquare(bitboardFrom)}");
+                }
             }
         }
 

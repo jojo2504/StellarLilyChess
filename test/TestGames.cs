@@ -15,9 +15,9 @@ public class TestGames {
             Chessboard chessboard = new();
             foreach (var move in gameRecord) {
                 chessboard.PushUci(move);
-                Logger.Log(chessboard);
-                Logger.Log(chessboard.stateStack.ElementAt(0));
-                Logger.Log("--------------------------------------");
+                Logger.Log(Channel.Debug, chessboard);
+                Logger.Log(Channel.Debug, chessboard.stateStack.ElementAt(0));
+                Logger.Log(Channel.Debug, "--------------------------------------");
                 if (chessboard.stateStack.ElementAt(0).OwnKingInCheck) {
                     bugged = true;
                     break;
@@ -25,7 +25,7 @@ public class TestGames {
             }
         }
         catch (Exception e) {
-            Logger.Log(e);
+            Logger.Log(Channel.Debug, e);
         }
         Assert.True(bugged);
     }

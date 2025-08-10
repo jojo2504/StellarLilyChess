@@ -33,23 +33,31 @@ namespace ChessEngine.Pieces {
             Bitboard castle_queen = 0UL;
 
             if ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) {
-                if (chessboard.State.CanWhiteKingCastle &
-                !chessboard.AreSquaresAttackedByColor([Square.E1, Square.F1, Square.G1], TurnColor.Black) &
-                !chessboard.AreAnySquaresOccupiedByColor([Square.E1, Square.F1, Square.G1], TurnColor.White)) {
+                Logger.Log(Channel.Debug, chessboard.State.CanWhiteKingCastle,
+                    !chessboard.AreSquaresAttackedByColor([Square.E1, Square.F1, Square.G1], TurnColor.Black),
+                    !chessboard.AreAnySquaresOccupied([Square.F1, Square.G1]));
+
+                if (chessboard.State.CanWhiteKingCastle &&
+                !chessboard.AreSquaresAttackedByColor([Square.E1, Square.F1, Square.G1], TurnColor.Black) &&
+                !chessboard.AreAnySquaresOccupied([Square.F1, Square.G1])) {
                     castle_king = kingLocation << 2;
                 }
-                else if (chessboard.State.CanWhiteQueenCastle &
-                !chessboard.AreSquaresAttackedByColor([Square.E1, Square.D1, Square.C1], TurnColor.Black)) {
+
+                if (chessboard.State.CanWhiteQueenCastle &&
+                !chessboard.AreSquaresAttackedByColor([Square.E1, Square.D1, Square.C1], TurnColor.Black) &&
+                !chessboard.AreAnySquaresOccupied([Square.D1, Square.C1])) {
                     castle_queen = kingLocation >> 2;
                 }
             }
             else {
-                if (chessboard.State.CanBlackKingCastle &
-                !chessboard.AreSquaresAttackedByColor([Square.E8, Square.F8, Square.G8], TurnColor.White)) {
+                if (chessboard.State.CanBlackKingCastle &&
+                !chessboard.AreSquaresAttackedByColor([Square.E8, Square.F8, Square.G8], TurnColor.White) &&
+                !chessboard.AreAnySquaresOccupied([Square.F8, Square.G8])) {
                     castle_king = kingLocation << 2;
                 } 
-                else if (chessboard.State.CanBlackQueenCastle &
-                !chessboard.AreSquaresAttackedByColor([Square.E8, Square.D8, Square.C8], TurnColor.White)) {
+                if (chessboard.State.CanBlackQueenCastle &&
+                !chessboard.AreSquaresAttackedByColor([Square.E8, Square.D8, Square.C8], TurnColor.White) &&
+                !chessboard.AreAnySquaresOccupied([Square.D8, Square.C8])) {
                     castle_queen = kingLocation >> 2;
                 }
             }

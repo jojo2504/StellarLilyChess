@@ -236,43 +236,72 @@ namespace ChessEngine {
 
         void GetAllPossiblePieceMoves(int colorIndex, int pieceTypeIndex, ref List<Move> allPseudoLegalMoves) {
             var pieceBitboard = Position[colorIndex, pieceTypeIndex].BitboardValue;
-            var squares = BitOperations.GetSquaresFromBits(pieceBitboard);
+            List<Square> squares = BitOperations.GetSquaresFromBits(pieceBitboard);
 
             switch ((PieceType)pieceTypeIndex) {
                 case PieceType.Pawn:
                     foreach (var square in squares) {
                         var possibleMoves = Pawn.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        Move.EncodePossibleMoves(possibleMoves, square, ref allPseudoLegalMoves);
+                        // get uci
+                        while (possibleMoves != 0) {
+                            int lsbIndex = System.Numerics.BitOperations.TrailingZeroCount(possibleMoves);
+                            string uci = $"{square}{(Square)lsbIndex}".ToLower();
+                            if ((BitOperations.ToBitboard(lsbIndex) & LookupTables.GetRankMask(Rank.RANK_1)) != 0 ||
+                                (BitOperations.ToBitboard(lsbIndex) & LookupTables.GetRankMask(Rank.RANK_8)) != 0) {
+                                foreach (KeyValuePair<char, byte> entry in Pawn.PromotionDict) {
+                                    allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci + entry.Key));
+                                }
+                            }
+                            else {
+                                allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
+                            }
+                            possibleMoves &= possibleMoves - 1; // Clear the least significant bit set
+                        }
                     }
                     break;
                 case PieceType.Rook:
                     foreach (var square in squares) {
                         var possibleMoves = Rook.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        Move.EncodePossibleMoves(possibleMoves, square, ref allPseudoLegalMoves);
+                        List<string> ucis = Move.GetUcis(possibleMoves, square);
+                        foreach (var uci in ucis) {
+                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
+                        }
                     }
                     break;
                 case PieceType.Knight:
                     foreach (var square in squares) {
                         var possibleMoves = Knight.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        Move.EncodePossibleMoves(possibleMoves, square, ref allPseudoLegalMoves);
+                        List<string> ucis = Move.GetUcis(possibleMoves, square);
+                        foreach (var uci in ucis) {
+                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
+                        }
                     }
                     break;
                 case PieceType.Bishop:
                     foreach (var square in squares) {
                         var possibleMoves = Bishop.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        Move.EncodePossibleMoves(possibleMoves, square, ref allPseudoLegalMoves);
+                        List<string> ucis = Move.GetUcis(possibleMoves, square);
+                        foreach (var uci in ucis) {
+                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
+                        }
                     }
                     break;
                 case PieceType.Queen:
                     foreach (var square in squares) {
                         var possibleMoves = Queen.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        Move.EncodePossibleMoves(possibleMoves, square, ref allPseudoLegalMoves);
+                        List<string> ucis = Move.GetUcis(possibleMoves, square);
+                        foreach (var uci in ucis) {
+                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
+                        }
                     }
                     break;
                 case PieceType.King:
                     foreach (var square in squares) {
                         var possibleMoves = King.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        Move.EncodePossibleMoves(possibleMoves, square, ref allPseudoLegalMoves);
+                        List<string> ucis = Move.GetUcis(possibleMoves, square);
+                        foreach (var uci in ucis) {
+                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
+                        }
                     }
                     break;
             }
@@ -325,7 +354,7 @@ namespace ChessEngine {
             }
         }
 
-        public List<Move> GenerateMoves() {
+        List<Move> GenerateMoves() {
             List<Move> allPseudoLegalMoves = new();
 
             // first opponant color, then own color to check for attacked/unattacked squares => populate the attack matrix
@@ -350,11 +379,7 @@ namespace ChessEngine {
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
                 if (!IsIncheck()) {
-                    //Logger.Log($"KING POSITION IS NOT IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
                     LegalMoves.AddRange(allPseudoLegalMoves[i]);
-                }
-                else {
-                    //Logger.Log($"KING POSITION IS IN CHECK AT {BitOperations.ToSquare(Position[(int)State.TurnColor, (int)PieceType.King].BitboardValue)} AFTER {allPseudoLegalMoves[i]}");
                 }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
             }
@@ -362,7 +387,7 @@ namespace ChessEngine {
             return LegalMoves;
         }
 
-        public Bitboard GenerateAttacks(TurnColor turnColor) {
+        Bitboard GenerateAttacks(TurnColor turnColor) {
             Bitboard allAttackedSquares = 0UL;
 
             for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
@@ -385,22 +410,18 @@ namespace ChessEngine {
             }
             else {
                 //check if black king is in check
-                Logger.Log("checking if black king is in check");
-                Logger.Log("current chessboard");
-                Logger.Log(this);
+                //Logger.Log("checking if black king is in check");
+                //Logger.Log("current chessboard");
+                //Logger.Log(this);
 
                 AllAttackedSquares = GenerateAttacks(TurnColor.White);
-                Logger.Log("white attacks squares");
+                /*Logger.Log("white attacks squares");
                 Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
 
                 Logger.Log("black king bitboard value");
-                Logger.Log(StringHelper.FormatAsChessboard(Position[(int)TurnColor.Black, (int)PieceType.King]));
+                Logger.Log(StringHelper.FormatAsChessboard(Position[(int)TurnColor.Black, (int)PieceType.King]));*/
 
-                Logger.Log("is in check ?");
-                bool isInCheck = (AllAttackedSquares & BlackKing.BitboardValue) != 0;
-                Logger.Log(isInCheck);
-
-                return isInCheck;
+                return (AllAttackedSquares & BlackKing.BitboardValue) != 0;
             }
         }
 
@@ -431,11 +452,16 @@ namespace ChessEngine {
             return false;
         }
 
-        public bool AreSquaresOccupiedByColor(Square[] squares, TurnColor turnColor) {
+        public bool AreAnySquaresOccupied(Square[] squares) {
+            foreach (var square in squares) {
+                if ((BitOperations.ToBitboard(square) & AllPieces) != 0) return true;
+            }
             return false;
         }
 
         public ulong Perft(int depth) {
+            return DrawPerftTree(depth);
+
             int nMoves, i;
             ulong nodes = 0;
 
@@ -446,19 +472,18 @@ namespace ChessEngine {
             nMoves = allPseudoLegalMoves.Count;
             //Logger.Log(nMoves);
 
+            //Logger.Log(Channel.Debug, this);
+            foreach (var move in allPseudoLegalMoves) {
+                Logger.Log(Channel.Debug, move);
+            }
+
             for (i = 0; i < nMoves; i++) {
-                Logger.Log("trying to do this move:", allPseudoLegalMoves[i]);
+                Logger.Log(Channel.Debug, "doing this move:", allPseudoLegalMoves[i], this);
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
+                Logger.Log(Channel.Debug, "done", this);
                 bool isInCheckPerft = IsIncheck(stateStack.ElementAt(0).TurnColor);
-                Logger.Log("returned isInCheck", isInCheckPerft);
                 if (!isInCheckPerft) {
-                    Logger.Log("made move because black king not in check after", allPseudoLegalMoves[i]);
-                    Logger.Log(this);
-                    Logger.Log("---------------------------");
                     nodes += Perft(depth - 1);
-                }
-                else {
-                    Logger.Log($"skipped {allPseudoLegalMoves[i]} because it leaves the king in check");
                 }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
             }
@@ -466,6 +491,41 @@ namespace ChessEngine {
             //Logger.Log("got", nodes);
 
             return nodes;
+        }
+
+        public ulong DrawPerftTree(int depth, string indent = "") {
+            if (depth == 0) {
+                Logger.Log(Channel.Debug, $"{indent}└─ leaf: 1");
+                return 1UL;
+            }
+
+            List<Move> allPseudoLegalMoves = GenerateMoves();
+            ulong totalNodes = 0;
+
+            for (int i = 0; i < allPseudoLegalMoves.Count; i++) {
+                var move = allPseudoLegalMoves[i];
+                bool isLastMove = (i == allPseudoLegalMoves.Count - 1);
+                string branch = isLastMove ? "└─" : "├─";
+                string newIndent = indent + (isLastMove ? "   " : "│  ");
+
+                Logger.Log(Channel.Debug, $"{indent}{branch} {move}");
+
+                Move.MakeMove(this, move);
+                bool isInCheck = IsIncheck(stateStack.ElementAt(0).TurnColor);
+
+                if (!isInCheck) {
+                    ulong subtreeNodes = DrawPerftTree(depth - 1, newIndent);
+                    Logger.Log(Channel.Debug, $"{newIndent}└─ nodes: {subtreeNodes}");
+                    totalNodes += subtreeNodes;
+                }
+                else {
+                    Logger.Log(Channel.Debug, $"{newIndent}└─ illegal (in check)");
+                }
+
+                Move.UnmakeMove(this, move);
+            }
+            Logger.Log(Channel.Debug, $"└─ nodes: {totalNodes}");
+            return totalNodes;
         }
 
         public void PushUci(string move) {
