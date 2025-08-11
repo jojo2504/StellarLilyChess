@@ -1,322 +1,322 @@
 [
   {
     "square": "A1",
-    "magicNumber": 2308167378976114948,
+    "magicNumber": 5189290332113608771,
     "mask": 18049651735527936
   },
   {
     "square": "B1",
-    "magicNumber": 12826816904974861568,
+    "magicNumber": 292770431478284488,
     "mask": 70506452091904
   },
   {
     "square": "C1",
-    "magicNumber": 145242204691499012,
+    "magicNumber": 2307012960804968976,
     "mask": 275415828992
   },
   {
     "square": "D1",
-    "magicNumber": 2306973309726101636,
+    "magicNumber": 9300219174410322032,
     "mask": 1075975168
   },
   {
     "square": "E1",
-    "magicNumber": 4612816453822840880,
+    "magicNumber": 1130439823589376,
     "mask": 38021120
   },
   {
     "square": "F1",
-    "magicNumber": 10376443212641435904,
+    "magicNumber": 286285407846400,
     "mask": 8657588224
   },
   {
     "square": "G1",
-    "magicNumber": 79173700829504,
+    "magicNumber": 571750409569792,
     "mask": 2216338399232
   },
   {
     "square": "H1",
-    "magicNumber": 2305866665945993217,
+    "magicNumber": 77723378568413185,
     "mask": 567382630219776
   },
   {
     "square": "A2",
-    "magicNumber": 297277334053453960,
+    "magicNumber": 8933679857920,
     "mask": 9024825867763712
   },
   {
     "square": "B2",
-    "magicNumber": 612605002489397768,
+    "magicNumber": 5549233033984,
     "mask": 18049651735527424
   },
   {
     "square": "C2",
-    "magicNumber": 3459331866185760768,
+    "magicNumber": 13990436713554575872,
     "mask": 70506452221952
   },
   {
     "square": "D2",
-    "magicNumber": 572435422251012,
+    "magicNumber": 13835093828081680384,
     "mask": 275449643008
   },
   {
     "square": "E2",
-    "magicNumber": 1157429515299881028,
+    "magicNumber": 4611690434199167040,
     "mask": 9733406720
   },
   {
     "square": "F2",
-    "magicNumber": 10380815837619585029,
+    "magicNumber": 324824356541186048,
     "mask": 2216342585344
   },
   {
     "square": "G2",
-    "magicNumber": 150085557043234,
+    "magicNumber": 4755942223232647168,
     "mask": 567382630203392
   },
   {
     "square": "H2",
-    "magicNumber": 2378199946768945160,
+    "magicNumber": 288374963223142657,
     "mask": 1134765260406784
   },
   {
     "square": "A3",
-    "magicNumber": 9009127729800708,
+    "magicNumber": 2598581766902056002,
     "mask": 4512412933816832
   },
   {
     "square": "B3",
-    "magicNumber": 9224515537673012240,
+    "magicNumber": 76565609160247368,
     "mask": 9024825867633664
   },
   {
     "square": "C3",
-    "magicNumber": 146648497230448256,
+    "magicNumber": 1157425658352377920,
     "mask": 18049651768822272
   },
   {
     "square": "D3",
-    "magicNumber": 36591884956602416,
+    "magicNumber": 2943102374236954640,
     "mask": 70515108615168
   },
   {
     "square": "E3",
-    "magicNumber": 55450594306961408,
+    "magicNumber": 10845798280162443265,
     "mask": 2491752130560
   },
   {
     "square": "F3",
-    "magicNumber": 844588155701824,
+    "magicNumber": 9359670177170432,
     "mask": 567383701868544
   },
   {
     "square": "G3",
-    "magicNumber": 283675362070528,
+    "magicNumber": 1158551178120876168,
     "mask": 1134765256220672
   },
   {
     "square": "H3",
-    "magicNumber": 35188818120768,
+    "magicNumber": 140738059305477,
     "mask": 2269530512441344
   },
   {
     "square": "A4",
-    "magicNumber": 13515282972693508,
+    "magicNumber": 27030428287312916,
     "mask": 2256206450263040
   },
   {
     "square": "B4",
-    "magicNumber": 3758302827142726147,
+    "magicNumber": 1154052902108533764,
     "mask": 4512412900526080
   },
   {
     "square": "C4",
-    "magicNumber": 290553644355552258,
+    "magicNumber": 18085884616769792,
     "mask": 9024834391117824
   },
   {
     "square": "D4",
-    "magicNumber": 2318232306239672448,
+    "magicNumber": 9224077374235213842,
     "mask": 18051867805491712
   },
   {
     "square": "E4",
-    "magicNumber": 594756694525886468,
+    "magicNumber": 642668908519424,
     "mask": 637888545440768
   },
   {
     "square": "F4",
-    "magicNumber": 181975221794791440,
+    "magicNumber": 13511073794097664,
     "mask": 1135039602493440
   },
   {
     "square": "G4",
-    "magicNumber": 6755951361925473,
+    "magicNumber": 612771303540262980,
     "mask": 2269529440784384
   },
   {
     "square": "H4",
-    "magicNumber": 854321076116610,
+    "magicNumber": 2306124622317266949,
     "mask": 4539058881568768
   },
   {
     "square": "A5",
-    "magicNumber": 13844631640501913602,
+    "magicNumber": 612806277392827652,
     "mask": 1128098963916800
   },
   {
     "square": "B5",
-    "magicNumber": 564186921828864,
+    "magicNumber": 1153211913317392640,
     "mask": 2256197927833600
   },
   {
     "square": "C5",
-    "magicNumber": 577762797409536002,
+    "magicNumber": 1158007037943613456,
     "mask": 4514594912477184
   },
   {
     "square": "D5",
-    "magicNumber": 2630172586064085504,
+    "magicNumber": 1196311600767488,
     "mask": 9592139778506752
   },
   {
     "square": "E5",
-    "magicNumber": 578732360510476544,
+    "magicNumber": 81067559252820000,
     "mask": 19184279556981248
   },
   {
     "square": "F5",
-    "magicNumber": 4540992149651620,
+    "magicNumber": 4670246421114519812,
     "mask": 2339762086609920
   },
   {
     "square": "G5",
-    "magicNumber": 18314582430974465,
+    "magicNumber": 577693305920554048,
     "mask": 4538784537380864
   },
   {
     "square": "H5",
-    "magicNumber": 4683923943112460800,
+    "magicNumber": 182433170719786305,
     "mask": 9077569074761728
   },
   {
     "square": "A6",
-    "magicNumber": 36319077752672514,
+    "magicNumber": 149946183624960,
     "mask": 562958610993152
   },
   {
     "square": "B6",
-    "magicNumber": 1154047971522261123,
+    "magicNumber": 2306971254442181296,
     "mask": 1125917221986304
   },
   {
     "square": "C6",
-    "magicNumber": 18295944655409152,
+    "magicNumber": 37384200651265,
     "mask": 2814792987328512
   },
   {
     "square": "D6",
-    "magicNumber": 9227383742752983051,
+    "magicNumber": 1261150007814271493,
     "mask": 5629586008178688
   },
   {
     "square": "E6",
-    "magicNumber": 4629850019510354944,
+    "magicNumber": 17302900154418106624,
     "mask": 11259172008099840
   },
   {
     "square": "F6",
-    "magicNumber": 18032026674271552,
+    "magicNumber": 1873789940882506768,
     "mask": 22518341868716544
   },
   {
     "square": "G6",
-    "magicNumber": 581037091501113600,
+    "magicNumber": 6341921775550532608,
     "mask": 9007336962655232
   },
   {
     "square": "H6",
-    "magicNumber": 73219796116734208,
+    "magicNumber": 9227880124994028100,
     "mask": 18014673925310464
   },
   {
     "square": "A7",
-    "magicNumber": 27094234320348160,
+    "magicNumber": 2594391212980979744,
     "mask": 2216338399232
   },
   {
     "square": "B7",
-    "magicNumber": 4612255602564163088,
+    "magicNumber": 36068423629799458,
     "mask": 4432676798464
   },
   {
     "square": "C7",
-    "magicNumber": 77713765453529088,
+    "magicNumber": 22518316098913280,
     "mask": 11064376819712
   },
   {
     "square": "D7",
-    "magicNumber": 211107339963456,
+    "magicNumber": 596727500928188456,
     "mask": 22137335185408
   },
   {
     "square": "E7",
-    "magicNumber": 72068864973869056,
+    "magicNumber": 4616559672471093388,
     "mask": 44272556441600
   },
   {
     "square": "F7",
-    "magicNumber": 146373903187968,
+    "magicNumber": 3458940453952552960,
     "mask": 87995357200384
   },
   {
     "square": "G7",
-    "magicNumber": 220680784686874660,
+    "magicNumber": 1894370579231408384,
     "mask": 35253226045952
   },
   {
     "square": "H7",
-    "magicNumber": 1157426349842382881,
+    "magicNumber": 2254002125864992,
     "mask": 70506452091904
   },
   {
     "square": "A8",
-    "magicNumber": 4611758620630208513,
+    "magicNumber": 2450521286897600512,
     "mask": 567382630219776
   },
   {
     "square": "B8",
-    "magicNumber": 9660363054906411008,
+    "magicNumber": 1225071599423587523,
     "mask": 1134765260406784
   },
   {
     "square": "C8",
-    "magicNumber": 9232401230704185864,
+    "magicNumber": 11529215050431140096,
     "mask": 2832480465846272
   },
   {
     "square": "D8",
-    "magicNumber": 36284422719488,
+    "magicNumber": 282036680042499,
     "mask": 5667157807464448
   },
   {
     "square": "E8",
-    "magicNumber": 72058694088540424,
+    "magicNumber": 1017817913985401088,
     "mask": 11333774449049600
   },
   {
     "square": "F8",
-    "magicNumber": 1513209749708226818,
+    "magicNumber": 2287261345485060,
     "mask": 22526811443298304
   },
   {
     "square": "G8",
-    "magicNumber": 299216547685380,
+    "magicNumber": 11820858864931258626,
     "mask": 9024825867763712
   },
   {
     "square": "H8",
-    "magicNumber": 1233988505519587840,
+    "magicNumber": 6062480684965036416,
     "mask": 18049651735527936
   }
 ]

@@ -3,35 +3,14 @@ using Bitboard = ulong;
 
 namespace Finder {
     static class RookFinder {
-        // store all the blocker masks of the rook
-        static Bitboard[] rookBlockerMask = new Bitboard[64];
-        static public Bitboard[] RookBlockerMask => rookBlockerMask;
-
-        static RookFinder() {
-            GenRookBlockerMask();
-        }
-
-        static void GenRookBlockerMask() {
-            // i reprensents the current square bit we are working with
-            // create the blocker mask at the ith bit
-            for (int i = 0; i < 64; i++) {
-                int fileIndex = i % 8;
-                int rankIndex = i / 8;
-
-                Bitboard blockerMask = 0UL;
-                blockerMask |= LookupTables.GetFileMask((File)fileIndex);
-                blockerMask ^= LookupTables.GetRankMask((Rank)rankIndex); // this remove the current position bit 
-
-                // remove the 4 corners
-                blockerMask &= LookupTables.CornerClear;
-
-                // checks if not on border, else clears the border
-                if (((1UL << i) & LookupTables.AllBordersClear) != 0) {
-                    blockerMask &= LookupTables.AllBordersClear;
-                }
-
-                rookBlockerMask[i] = blockerMask;
-            }
+        public static Bitboard rmask(int sq) {
+            Bitboard result = 0UL;
+            int rk = sq / 8, fl = sq % 8, r, f;
+            for (r = rk + 1; r <= 6; r++) result |= (1UL << (fl + r * 8));
+            for (r = rk - 1; r >= 1; r--) result |= (1UL << (fl + r * 8));
+            for (f = fl + 1; f <= 6; f++) result |= (1UL << (f + rk * 8));
+            for (f = fl - 1; f >= 1; f--) result |= (1UL << (f + rk * 8));
+            return result;
         }
 
         public static Bitboard Ratt(int square, Bitboard block) {
@@ -66,7 +45,7 @@ namespace Finder {
             int i, j, k;
             bool fail;
 
-            mask = rookBlockerMask[sq];
+            mask = rmask(sq);
 
             for (i = 0; i < (1 << relevantBitsNumber); i++) {
                 b[i] = BitOperations.IndexToBitboard(i, relevantBitsNumber, mask);

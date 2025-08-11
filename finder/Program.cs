@@ -112,7 +112,7 @@ namespace Finder {
             int squareIndex;
             for(squareIndex = 0; squareIndex < 64; squareIndex++) {
                 RookMagicTable[squareIndex].magicNumber = RookFinder.FindMagic(squareIndex, RBits[squareIndex]);
-                RookMagicTable[squareIndex].mask = RookFinder.RookBlockerMask[squareIndex];
+                RookMagicTable[squareIndex].mask = RookFinder.rmask(squareIndex);
 
                 BishopMagicTable[squareIndex].magicNumber = BishopFinder.FindMagic(squareIndex, BBits[squareIndex]);
                 BishopMagicTable[squareIndex].mask = BishopFinder.bmask(squareIndex);
