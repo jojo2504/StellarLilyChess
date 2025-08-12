@@ -109,35 +109,35 @@ namespace ChessEngine {
                 if ((chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue & BitOperations.ToBitboard(fromSquare)) != 0) {
                     if ((BitOperations.ToBitboard(toSquare) & chessboard.AllPieces) != 0) {
                         smc = (byte)SpecialMovesCode.Captures;
+                        if (promotionChar.HasValue) {
+                            smc += Pawn.PromotionDict[(char)promotionChar];
+                        }
                     }
-                    switch ((PieceType)pieceTypeIndex) {
-                        case PieceType.Pawn:
-                            // promotion and capture? or en passant
-                            if (promotionChar.HasValue) {
-                                smc += Pawn.PromotionDict[(char)promotionChar];
-                            }
-                            if (Math.Abs((int)fromSquare - (int)toSquare) == 16) {
-                                smc = (byte)SpecialMovesCode.DoublePawnPush;
-                            }
-                            if ((Math.Abs((int)fromSquare - (int)toSquare) == 9) && ((BitOperations.ToBitboard(toSquare) & chessboard.AllPieces) == 0)) {
-                                smc = (byte)SpecialMovesCode.EpCapture;
-                            }
-                            break;
-
-                        case PieceType.King:
-                            // castle or capture
-                            if (Math.Abs((int)fromSquare - (int)toSquare) == 2) {
-                                if (toSquare == Square.C1 || toSquare == Square.C8) {
-                                    smc = (byte)SpecialMovesCode.QueenCastle;
+                    else {
+                        switch ((PieceType)pieceTypeIndex) {
+                            case PieceType.Pawn:
+                                // DoublePawnPush or EpCapture
+                                if (Math.Abs((int)fromSquare - (int)toSquare) == 16) {
+                                    smc = (byte)SpecialMovesCode.DoublePawnPush;
                                 }
-                                else if (toSquare == Square.G1 || toSquare == Square.G8) {
-                                    smc = (byte)SpecialMovesCode.KingCastle;
+                                var distance = Math.Abs((int)fromSquare - (int)toSquare);
+                                if ((distance == 7 || distance == 9) && ((BitOperations.ToBitboard(toSquare) & chessboard.AllPieces) == 0)) {
+                                    smc = (byte)SpecialMovesCode.EpCapture;
                                 }
-                            }
-                            break;
+                                break;
 
-                        default:
-                            break;
+                            case PieceType.King:
+                                // castle
+                                if (Math.Abs((int)fromSquare - (int)toSquare) == 2) {
+                                    if (toSquare == Square.C1 || toSquare == Square.C8) {
+                                        smc = (byte)SpecialMovesCode.QueenCastle;
+                                    }
+                                    else if (toSquare == Square.G1 || toSquare == Square.G8) {
+                                        smc = (byte)SpecialMovesCode.KingCastle;
+                                    }
+                                }
+                                break;
+                        }
                     }
                 }
             }
@@ -182,21 +182,21 @@ namespace ChessEngine {
                 if (move.SpecialCode == (int)SpecialMovesCode.KingCastle) {
                     if (chessboard.State.TurnColor == TurnColor.White) {
                         chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.H1); // remove old position
-                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= bitboardTo >> 1; // set new position
+                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.F1); // set new position
                     }
                     else {
                         chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.H8); // remove old position
-                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= bitboardTo << 1; // set new position
+                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.F8); // set new position
                     }
                 }
                 else if (move.SpecialCode == (int)SpecialMovesCode.QueenCastle) {
                     if (chessboard.State.TurnColor == TurnColor.White) {
                         chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.A1); // remove old position
-                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= bitboardTo << 1; // set new position
+                        chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.D1); // set new position
                     }
                     else {
                         chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.A8); // remove old position
-                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= bitboardTo >> 1; // set new position
+                        chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.D8); // set new position
                     }
                 }
             }
@@ -208,9 +208,11 @@ namespace ChessEngine {
 
                 if (chessboard.State.TurnColor == TurnColor.White) {
                     chessboard.Position[(int)TurnColor.Black, (int)PieceType.Pawn].BitboardValue ^= bitboardTo >> 8; // remove captured piece
+                    Logger.Log(Channel.Debug, $"en passant capture, removing pawn on {BitOperations.ToSquare(bitboardTo >> 8)}");
                 }
                 else {
                     chessboard.Position[(int)TurnColor.White, (int)PieceType.Pawn].BitboardValue ^= bitboardTo << 8; // remove captured piece
+                    Logger.Log(Channel.Debug, $"en passant capture by black, removing pawn on {BitOperations.ToSquare(bitboardTo << 8)}");
                 }
 
                 chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom; // delete old position
@@ -231,31 +233,37 @@ namespace ChessEngine {
                                     case (int)SpecialMovesCode.BishopPromotion:
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom; // remove promoting pawn
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight].BitboardValue ^= bitboardTo; // spawn new knight
+                                        Logger.Log(Channel.Debug, "bishop promotion");
                                         break;
 
                                     case (int)SpecialMovesCode.KnightPromotion:
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom; // remove promoting pawn
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop].BitboardValue ^= bitboardTo; // spawn new bishop
+                                        Logger.Log(Channel.Debug, "knight promotion");
                                         break;
 
                                     case (int)SpecialMovesCode.RookPromotion:
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom; // remove promoting pawn
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook].BitboardValue ^= bitboardTo; // spawn new rook
+                                        Logger.Log(Channel.Debug, "rook promotion");
                                         break;
 
                                     case (int)SpecialMovesCode.QueenPromotion:
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom; // remove promoting pawn
                                         chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen].BitboardValue ^= bitboardTo; // spawn new queen
+                                        Logger.Log(Channel.Debug, "queen promotion");
+                                        break;
+                                    default: // no promotion
+                                        chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardFrom; // remove old position
+                                        chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardTo; // set new position
                                         break;
                                 }
                             }
                             else {
                                 chessboard.State.HalfMoveClock++;
+                                chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardFrom; // remove old position
+                                chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardTo; // set new position
                             }
-
-                            chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardFrom; // remove old position
-                            chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex].BitboardValue ^= bitboardTo; // set new position
-
                             chessboard.State.CapturedPiece = null;
                         }
                         // capture
@@ -384,7 +392,6 @@ namespace ChessEngine {
             chessboard.State.CanBlackKingCastle = latestState.CanBlackKingCastle;
             chessboard.State.CanBlackQueenCastle = latestState.CanBlackQueenCastle;
 
-            // TODO: implemented promotion unmake, en passant unmake and castling unmake
             if (move.PROMOTION_FLAG) {
                 if (move.CAPTURE_FLAG) { // restore captured piece
                     chessboard.Position[(int)latestState.TurnColor ^ 1, (int)latestState.CapturedPiece!].BitboardValue ^= bitboardTo;
@@ -406,6 +413,7 @@ namespace ChessEngine {
 
                 //precheck castle => jump the rook over the king
                 if (move.SpecialCode == (int)SpecialMovesCode.KingCastle) {
+                    Logger.Log(Channel.Debug, "unmake king castle");
                     if (chessboard.State.TurnColor == TurnColor.White) {
                         chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.F1); // remove old position
                         chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.H1); // set new position
@@ -414,8 +422,10 @@ namespace ChessEngine {
                         chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.F8); // remove old position
                         chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.H8); // set new position
                     }
+                    Logger.Log(Channel.Debug, chessboard);
                 }
                 else if (move.SpecialCode == (int)SpecialMovesCode.QueenCastle) {
+                    Logger.Log(Channel.Debug, "unmake queen castle");
                     if (chessboard.State.TurnColor == TurnColor.White) {
                         chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.D1); // remove old position
                         chessboard.Position[(int)TurnColor.White, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.A1); // set new position
@@ -424,17 +434,18 @@ namespace ChessEngine {
                         chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.D8); // remove old position
                         chessboard.Position[(int)TurnColor.Black, (int)PieceType.Rook].BitboardValue ^= BitOperations.ToBitboard(Square.A8); // set new position
                     }
+                    Logger.Log(Channel.Debug, chessboard);
                 }
             }
 
-            else if (chessboard.stateStack.ElementAt(0).EnPassantSquare.HasValue) {
+            else if (move.SpecialCode == (int)SpecialMovesCode.EpCapture) {
                 chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardFrom;
                 chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn].BitboardValue ^= bitboardTo;
                 if (chessboard.State.TurnColor == TurnColor.White) {
                     chessboard.Position[(int)TurnColor.Black, (int)PieceType.Pawn].BitboardValue ^= bitboardTo >> 8;
                 }
                 else {
-                    chessboard.Position[(int)TurnColor.Black, (int)PieceType.Pawn].BitboardValue ^= bitboardTo << 8;
+                    chessboard.Position[(int)TurnColor.White, (int)PieceType.Pawn].BitboardValue ^= bitboardTo << 8;
                 }
             }
 

@@ -1,0 +1,7 @@
+{
+  "Channels": {
+    "General": { "Active": false },
+    "Debug":   { "Active": true },
+    "Game":    { "Active": false }
+  }
+}

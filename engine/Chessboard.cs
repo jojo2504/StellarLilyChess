@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ChessEngine.Pieces;
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
+using static ChessEngine.Move;
 using Bitboard = ulong;
 
 namespace ChessEngine {
@@ -98,6 +99,7 @@ namespace ChessEngine {
         public Bitboard[,] AttackMatrix = new Bitboard[2, 6];
         public State State = new();
         public Stack<State> stateStack = new();
+        public int perftNumberPseudoLegalMoves = 0;
 
         public Chessboard(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
             ParseFEN(fen);
@@ -135,7 +137,7 @@ namespace ChessEngine {
             var piecePlacement = parts[0];
             var turnColor = parts[1];
             var castlingAbility = parts[2];
-            var epSquare = parts[3];
+            var epSquare = parts[3].ToUpper();
             var halfMove = parts[4];
             var FullMove = parts[5];
 
@@ -246,6 +248,7 @@ namespace ChessEngine {
                         while (possibleMoves != 0) {
                             int lsbIndex = System.Numerics.BitOperations.TrailingZeroCount(possibleMoves);
                             string uci = $"{square}{(Square)lsbIndex}".ToLower();
+                            // check if promotion
                             if ((BitOperations.ToBitboard(lsbIndex) & LookupTables.GetRankMask(Rank.RANK_1)) != 0 ||
                                 (BitOperations.ToBitboard(lsbIndex) & LookupTables.GetRankMask(Rank.RANK_8)) != 0) {
                                 foreach (KeyValuePair<char, byte> entry in Pawn.PromotionDict) {
@@ -440,7 +443,7 @@ namespace ChessEngine {
             Bitboard AllAttackedSquares = 0UL;
 
             for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
-                AllAttackedSquares |= AttackMatrix[(int)turnColor ^ 1, pieceTypeIndex];
+                AllAttackedSquares |= AttackMatrix[(int)turnColor, pieceTypeIndex];
             }
 
             foreach (Square square in squares) {
@@ -470,26 +473,34 @@ namespace ChessEngine {
 
             List<Move> allPseudoLegalMoves = GenerateMoves();
             nMoves = allPseudoLegalMoves.Count;
+            perftNumberPseudoLegalMoves += allPseudoLegalMoves.Count;
+
+            foreach (var move in allPseudoLegalMoves) { 
+                Logger.Log(Channel.Debug, move, (SpecialMovesCode)move.SpecialCode);
+            }
+
             //Logger.Log(nMoves);
 
             //Logger.Log(Channel.Debug, this);
-            foreach (var move in allPseudoLegalMoves) {
-                Logger.Log(Channel.Debug, move);
-            }
+            //foreach (var move in allPseudoLegalMoves) {
+            //    Logger.Log(Channel.Debug, move);
+            //}
 
             for (i = 0; i < nMoves; i++) {
-                Logger.Log(Channel.Debug, "doing this move:", allPseudoLegalMoves[i], this);
+                Logger.Log(Channel.Debug, $"{State.TurnColor} doing this move:", allPseudoLegalMoves[i], (SpecialMovesCode)allPseudoLegalMoves[i].SpecialCode, this);
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
                 Logger.Log(Channel.Debug, "done", this);
                 bool isInCheckPerft = IsIncheck(stateStack.ElementAt(0).TurnColor);
                 if (!isInCheckPerft) {
                     nodes += Perft(depth - 1);
                 }
+                Logger.Log(Channel.Debug, $"{stateStack.ElementAt(0).TurnColor} unmaking move {allPseudoLegalMoves[i]}, new chessboard:");
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
+                Logger.Log(Channel.Debug, this);
             }
 
             //Logger.Log("got", nodes);
-
+            Logger.Log(Channel.Debug, perftNumberPseudoLegalMoves);
             return nodes;
         }
 
@@ -502,15 +513,19 @@ namespace ChessEngine {
             List<Move> allPseudoLegalMoves = GenerateMoves();
             ulong totalNodes = 0;
 
+            perftNumberPseudoLegalMoves += allPseudoLegalMoves.Count;
             for (int i = 0; i < allPseudoLegalMoves.Count; i++) {
                 var move = allPseudoLegalMoves[i];
                 bool isLastMove = (i == allPseudoLegalMoves.Count - 1);
                 string branch = isLastMove ? "└─" : "├─";
                 string newIndent = indent + (isLastMove ? "   " : "│  ");
 
-                Logger.Log(Channel.Debug, $"{indent}{branch} {move}");
+                Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move}");
 
                 Move.MakeMove(this, move);
+                Logger.Log(Channel.Debug, "new state", State);
+
+                perftNumberPseudoLegalMoves--;
                 bool isInCheck = IsIncheck(stateStack.ElementAt(0).TurnColor);
 
                 if (!isInCheck) {
@@ -525,7 +540,37 @@ namespace ChessEngine {
                 Move.UnmakeMove(this, move);
             }
             Logger.Log(Channel.Debug, $"└─ nodes: {totalNodes}");
+            Logger.Log(Channel.Debug, "perftNumberPseudoLegalMoves remaining", perftNumberPseudoLegalMoves);
             return totalNodes;
+        }
+
+        public ulong PerftAndPrint(int depth) {
+            int nMoves, i;
+            ulong nodes = 0;
+
+            if (depth == 0)
+                return 1UL;
+
+            List<Move> allPseudoLegalMoves = GenerateMoves();
+            nMoves = allPseudoLegalMoves.Count;
+
+            for (i = 0; i < nMoves; i++) {
+                Move.MakeMove(this, allPseudoLegalMoves[i]);
+                if (!IsIncheck(stateStack.ElementAt(0).TurnColor)) {
+                    ulong moveNodes = Perft(depth - 1);  // Store individual result
+                    nodes += moveNodes;                   // Add to total
+                    Move.UnmakeMove(this, allPseudoLegalMoves[i]);
+                    Console.WriteLine($"{allPseudoLegalMoves[i]} {moveNodes}"); // Print individual
+                }
+                else {
+                    Move.UnmakeMove(this, allPseudoLegalMoves[i]);
+                    Console.WriteLine($"{allPseudoLegalMoves[i]} 0"); // Illegal move
+                }
+            }
+
+            Console.WriteLine(); // Empty line before total
+            Console.WriteLine(nodes); // Print total
+            return nodes;
         }
 
         public void PushUci(string move) {
