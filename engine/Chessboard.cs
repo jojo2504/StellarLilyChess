@@ -99,7 +99,6 @@ namespace ChessEngine {
         public Bitboard[,] AttackMatrix = new Bitboard[2, 6];
         public State State = new();
         public Stack<State> stateStack = new();
-        public int perftNumberPseudoLegalMoves = 0;
 
         public Chessboard(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
             ParseFEN(fen);
@@ -112,8 +111,6 @@ namespace ChessEngine {
         void InitializeState() {
             State.Checkmated = false;
             State.Stalemated = false;
-            State.OwnKingInCheck = false; // (might be temp)
-            State.EnemyKingInCheck = false; // (might be temp)
         }
 
         void ParseFEN(string fen) {
@@ -404,7 +401,7 @@ namespace ChessEngine {
         public bool IsIncheck(TurnColor? turncolor = null) {
             Bitboard AllAttackedSquares;
 
-            if ((turncolor ?? State.TurnColor) == TurnColor.White) {
+            if ((turncolor ?? State.TurnColor) == TurnColor.White) { // check if white king is in check
                 //check if white king is in check
                 AllAttackedSquares = GenerateAttacks(TurnColor.Black);
                 //Logger.Log("black attacks squares");
@@ -473,7 +470,6 @@ namespace ChessEngine {
 
             List<Move> allPseudoLegalMoves = GenerateMoves();
             nMoves = allPseudoLegalMoves.Count;
-            perftNumberPseudoLegalMoves += allPseudoLegalMoves.Count;
 
             foreach (var move in allPseudoLegalMoves) { 
                 Logger.Log(Channel.Debug, move, (SpecialMovesCode)move.SpecialCode);
@@ -500,7 +496,6 @@ namespace ChessEngine {
             }
 
             //Logger.Log("got", nodes);
-            Logger.Log(Channel.Debug, perftNumberPseudoLegalMoves);
             return nodes;
         }
 
@@ -513,24 +508,25 @@ namespace ChessEngine {
             List<Move> allPseudoLegalMoves = GenerateMoves();
             ulong totalNodes = 0;
 
-            perftNumberPseudoLegalMoves += allPseudoLegalMoves.Count;
             for (int i = 0; i < allPseudoLegalMoves.Count; i++) {
                 var move = allPseudoLegalMoves[i];
                 bool isLastMove = (i == allPseudoLegalMoves.Count - 1);
                 string branch = isLastMove ? "└─" : "├─";
                 string newIndent = indent + (isLastMove ? "   " : "│  ");
 
-                Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move}");
+                Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move} {(SpecialMovesCode)move.SpecialCode}");
 
                 Move.MakeMove(this, move);
-                Logger.Log(Channel.Debug, "new state", State);
 
-                perftNumberPseudoLegalMoves--;
+                if (stateStack.ElementAt(0).TurnColor == TurnColor.White) {
+                    Logger.Log(Channel.Debug, State);
+                }
+                
                 bool isInCheck = IsIncheck(stateStack.ElementAt(0).TurnColor);
 
                 if (!isInCheck) {
                     ulong subtreeNodes = DrawPerftTree(depth - 1, newIndent);
-                    Logger.Log(Channel.Debug, $"{newIndent}└─ nodes: {subtreeNodes}");
+                    //Logger.Log(Channel.Debug, $"{newIndent}└─ nodes: {subtreeNodes}");
                     totalNodes += subtreeNodes;
                 }
                 else {
@@ -540,7 +536,6 @@ namespace ChessEngine {
                 Move.UnmakeMove(this, move);
             }
             Logger.Log(Channel.Debug, $"└─ nodes: {totalNodes}");
-            Logger.Log(Channel.Debug, "perftNumberPseudoLegalMoves remaining", perftNumberPseudoLegalMoves);
             return totalNodes;
         }
 

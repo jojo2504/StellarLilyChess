@@ -33,10 +33,6 @@ namespace ChessEngine.Pieces {
             Bitboard castle_queen = 0UL;
 
             if ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) {
-                //Logger.Log(Channel.Debug, chessboard.State.CanWhiteKingCastle,
-                //    !chessboard.AreSquaresAttackedByColor([Square.E1, Square.F1, Square.G1], TurnColor.Black),
-                //    !chessboard.AreAnySquaresOccupied([Square.F1, Square.G1]));
-
                 if (chessboard.State.CanWhiteKingCastle &&
                 !chessboard.AreSquaresAttackedByColor([Square.E1, Square.F1, Square.G1], TurnColor.Black) &&
                 !chessboard.AreAnySquaresOccupied([Square.F1, Square.G1])) {
@@ -45,15 +41,11 @@ namespace ChessEngine.Pieces {
 
                 if (chessboard.State.CanWhiteQueenCastle &&
                 !chessboard.AreSquaresAttackedByColor([Square.E1, Square.D1, Square.C1], TurnColor.Black) &&
-                !chessboard.AreAnySquaresOccupied([Square.D1, Square.C1])) {
+                !chessboard.AreAnySquaresOccupied([Square.D1, Square.C1, Square.B1])) {
                     castle_queen = kingLocation >> 2;
                 }
             }
             else {
-                Logger.Log(Channel.Debug, chessboard.State.TurnColor, chessboard.State.CanBlackKingCastle,
-                    !chessboard.AreSquaresAttackedByColor([Square.E8, Square.F8, Square.G8], TurnColor.White),
-                    !chessboard.AreAnySquaresOccupied([Square.F8, Square.G8]), chessboard);
-
                 if (chessboard.State.CanBlackKingCastle &&
                 !chessboard.AreSquaresAttackedByColor([Square.E8, Square.F8, Square.G8], TurnColor.White) &&
                 !chessboard.AreAnySquaresOccupied([Square.F8, Square.G8])) {
@@ -61,7 +53,7 @@ namespace ChessEngine.Pieces {
                 } 
                 if (chessboard.State.CanBlackQueenCastle &&
                 !chessboard.AreSquaresAttackedByColor([Square.E8, Square.D8, Square.C8], TurnColor.White) &&
-                !chessboard.AreAnySquaresOccupied([Square.D8, Square.C8])) {
+                !chessboard.AreAnySquaresOccupied([Square.D8, Square.C8, Square.B8])) {
                     castle_queen = kingLocation >> 2;
                 }
             }

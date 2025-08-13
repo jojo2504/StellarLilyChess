@@ -46,9 +46,9 @@ public class TestPerft {
     }
 
     [Theory]
-    //[InlineData(1, 6UL)]
+    [InlineData(1, 6UL)]
     [InlineData(2, 264UL)]
-    //[InlineData(3, 9467UL)]
+    [InlineData(3, 9467UL)]
     public void TestPerft4(int depth, ulong expected) {
         var fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
         Chessboard chessboard = new(fen);
@@ -162,6 +162,46 @@ public class TestPerft {
     [InlineData(2, 20UL)]
     public void TestPerftCheckmate(int depth, ulong expected) {
         var fen = "5k2/7R/5K1P/5P2/8/8/8/8 w - - 0 1";
+        Chessboard chessboard = new(fen);
+        Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
+        Assert.Equal(expected, chessboard.Perft(depth));
+        Logger.Log(Channel.Debug, "--------------------------");
+    }
+    
+    [Theory]
+    [InlineData(2, 1623UL)]
+    public void TestPerft4Custom1(int depth, ulong expected) {
+        var fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 0 1";
+        Chessboard chessboard = new(fen);
+        Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
+        Assert.Equal(expected, chessboard.Perft(depth));
+        Logger.Log(Channel.Debug, "--------------------------");
+    }
+
+    [Theory]
+    [InlineData(2, 1373UL)]
+    public void TestPerft5Custom1(int depth, ulong expected) {
+        var fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/P7/1PP1NnPP/RNBQK2R b KQ - 1 8";
+        Chessboard chessboard = new(fen);
+        Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
+        Assert.Equal(expected, chessboard.Perft(depth));
+        Logger.Log(Channel.Debug, "--------------------------");
+    }
+
+    [Theory]
+    [InlineData(1, 4UL)]
+    public void TestPromotion(int depth, ulong expected) {
+        var fen = "7k/8/6Q1/8/8/8/3p4/8 b - - 0 1";
+        Chessboard chessboard = new(fen);
+        Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
+        Assert.Equal(expected, chessboard.Perft(depth));
+        Logger.Log(Channel.Debug, "--------------------------");
+    }
+    
+    [Theory]
+    [InlineData(4, 10087UL)]
+    public void TestCustomwtfisgoingon(int depth, ulong expected) {
+        var fen = "7k/8/8/8/1p6/7p/P5P1/R3K3 w Q - 0 1";
         Chessboard chessboard = new(fen);
         Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
         Assert.Equal(expected, chessboard.Perft(depth));
