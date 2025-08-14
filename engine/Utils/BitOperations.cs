@@ -1,21 +1,13 @@
 using Bitboard = ulong;
 using System.Numerics;
 using ChessEngine.Utils.Logging;
+using System.Runtime.CompilerServices;
 
 namespace ChessEngine.Utils {
     public static class BitOperations {
         static readonly Random random = new();
-        readonly static Bitboard[] indexedBitboard = new Bitboard[64];
-        public static Bitboard[] IndexedBitboard => indexedBitboard;
 
         static BitOperations() {
-            InitializeIndexedBitboard();
-        }
-
-        static void InitializeIndexedBitboard() {
-            for (int i = 0; i < 64; i++) {
-                indexedBitboard[i] = 1UL << i;
-            }
         }
 
         public static int CountBits(Bitboard number) {
@@ -42,10 +34,16 @@ namespace ChessEngine.Utils {
             return (int)((bitboard * magic) >> (64 - bits));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int pop_1st_bit(ref Bitboard bitboard) {
             int pos = System.Numerics.BitOperations.TrailingZeroCount(bitboard);
             bitboard &= (bitboard - 1);  // Remove the rightmost bit
             return pos;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void del_1st_bit(ref Bitboard bitboard) {
+            bitboard &= bitboard - 1;  // Remove the rightmost bit
         }
 
         public static Bitboard IndexToBitboard(int index, int bits, Bitboard m) {
@@ -70,18 +68,32 @@ namespace ChessEngine.Utils {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bitboard ToBitboard(int index) {
-            return indexedBitboard[index];
-        }
-        public static Bitboard ToBitboard(Square square) {
-            return indexedBitboard[(int)square];
+            return 1UL << index;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Bitboard ToBitboard(Square square) {
+            return 1UL << (int)square;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bitboard ToBitboard(Square? square) {
             if (square.HasValue) {
-                return indexedBitboard[(int)square];
+                return 1UL << (int)square;
             }
             return 0UL;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int ToIndex(Bitboard bitboard) {
+            return System.Numerics.BitOperations.TrailingZeroCount(bitboard);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Bitboard LsbIndexBitboard(Bitboard bitboard) {
+            return bitboard & (0UL - bitboard);
         }
 
         public static Square ToSquare(Bitboard bitboard) {

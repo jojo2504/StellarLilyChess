@@ -64,8 +64,8 @@ namespace ChessEngine.Pieces {
             }
         }
 
-        public static Bitboard ComputePossibleMoves(Square square, Chessboard chessboard, TurnColor? turnColor = null) {
-            var sq = (int)square;
+        public static Bitboard ComputePossibleMoves(Bitboard bishopLocation, Chessboard chessboard, TurnColor? turnColor = null) {
+            var sq = BitOperations.ToIndex(bishopLocation);
             var occ = chessboard.AllPieces;
 
             occ &= BishopMagicTable[sq].mask;

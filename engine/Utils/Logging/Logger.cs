@@ -7,6 +7,7 @@ namespace ChessEngine.Utils.Logging {
         General,
         Debug,
         Game,
+        Benchmark,
     }
 
     public class ChannelConfig {

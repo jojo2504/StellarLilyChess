@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using ChessEngine.Pieces;
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
@@ -233,121 +234,213 @@ namespace ChessEngine {
             return StringHelper.FormatAsChessboard(ChessBoardState.Replace('0', '.'));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool ShouldCheckCastling() {
+            // Quick checks before expensive castling computation
+            return State.CanWhiteKingCastle || State.CanWhiteQueenCastle ||
+                    State.CanBlackKingCastle || State.CanBlackQueenCastle;
+            //!IsInCheck();  // Can't castle out of check
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void AddAllPossibleMoves(Bitboard fromBitboard, Bitboard possibleMoves, ref List<Move> allPseudoLegalMoves) {
+            while (possibleMoves != 0) {
+                var toBitboard = BitOperations.LsbIndexBitboard(possibleMoves);
+                BitOperations.del_1st_bit(ref possibleMoves);
+
+                var move = new Move(from: fromBitboard, to: toBitboard, chessboard: this);
+                allPseudoLegalMoves.Add(move);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void AddAllPossibleMovesPawn(Bitboard fromBitboard, Bitboard possibleMoves, ref List<Move> allPseudoLegalMoves) {
+            int fromIndex = BitOperations.ToIndex(fromBitboard);  // Compute once
+
+            while (possibleMoves != 0) {
+                int toIndex = BitOperations.ToIndex(possibleMoves);
+                BitOperations.del_1st_bit(ref possibleMoves);
+
+                // Promotion moves
+                if (toIndex < 8 || toIndex >= 56) {
+                    bool isCapture = ((1UL << toIndex) & AllPieces) != 0;
+                    var promotionArray = isCapture ? Pawn.CapturePromotions : Pawn.QuietPromotions;
+
+                    foreach (var promotionCode in promotionArray) {
+                        ushort moveWord = (ushort)((fromIndex << 10) | (toIndex << 4) | (int)promotionCode);
+                        allPseudoLegalMoves.Add(new Move(moveWord));
+                    }
+                }
+                else {
+                    // Regular pawn moves - determine special code DIRECTLY
+                    bool isCapture = ((1UL << toIndex) & AllPieces) != 0;
+                    int distance = Math.Abs(fromIndex - toIndex);
+
+                    SpecialMovesCode specialCode;
+                    if (isCapture) {
+                        specialCode = SpecialMovesCode.Captures;
+                    }
+                    else if (distance == 16) {
+                        specialCode = SpecialMovesCode.DoublePawnPush;
+                    }
+                    else if ((distance == 7 || distance == 9)) {
+                        specialCode = SpecialMovesCode.EpCapture;
+                    }
+                    else {
+                        specialCode = SpecialMovesCode.QuietMoves;
+                    }
+
+                    // Create move directly without calling FindSpecialMoveCode
+                    ushort moveWord = (ushort)((fromIndex << 10) | (toIndex << 4) | (int)specialCode);
+                    allPseudoLegalMoves.Add(new Move(moveWord));
+                }
+            }
+        }
+
         void GetAllPossiblePieceMoves(int colorIndex, int pieceTypeIndex, ref List<Move> allPseudoLegalMoves) {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
             var pieceBitboard = Position[colorIndex, pieceTypeIndex].BitboardValue;
-            List<Square> squares = BitOperations.GetSquaresFromBits(pieceBitboard);
+            Bitboard possibleMoves;
 
             switch ((PieceType)pieceTypeIndex) {
                 case PieceType.Pawn:
-                    foreach (var square in squares) {
-                        var possibleMoves = Pawn.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        // get uci
-                        while (possibleMoves != 0) {
-                            int lsbIndex = System.Numerics.BitOperations.TrailingZeroCount(possibleMoves);
-                            string uci = $"{square}{(Square)lsbIndex}".ToLower();
-                            // check if promotion
-                            if ((BitOperations.ToBitboard(lsbIndex) & LookupTables.GetRankMask(Rank.RANK_1)) != 0 ||
-                                (BitOperations.ToBitboard(lsbIndex) & LookupTables.GetRankMask(Rank.RANK_8)) != 0) {
-                                foreach (KeyValuePair<char, byte> entry in Pawn.PromotionDict) {
-                                    allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci + entry.Key));
-                                }
-                            }
-                            else {
-                                allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
-                            }
-                            possibleMoves &= possibleMoves - 1; // Clear the least significant bit set
-                        }
+                    while (pieceBitboard != 0) {
+                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.del_1st_bit(ref pieceBitboard);
+
+                        possibleMoves = Pawn.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
+                        AddAllPossibleMovesPawn(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
+
+                    stopwatch.Stop();
+                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
+
                 case PieceType.Rook:
-                    foreach (var square in squares) {
-                        var possibleMoves = Rook.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        List<string> ucis = Move.GetUcis(possibleMoves, square);
-                        foreach (var uci in ucis) {
-                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
-                        }
+                    while (pieceBitboard != 0) {
+                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.del_1st_bit(ref pieceBitboard);
+
+                        possibleMoves = Rook.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
+                        AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
+
+                    stopwatch.Stop();
+                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.ElapsedTicks} ns");
                     break;
+
                 case PieceType.Knight:
-                    foreach (var square in squares) {
-                        var possibleMoves = Knight.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        List<string> ucis = Move.GetUcis(possibleMoves, square);
-                        foreach (var uci in ucis) {
-                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
-                        }
+                    while (pieceBitboard != 0) {
+                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.del_1st_bit(ref pieceBitboard);
+
+                        possibleMoves = Knight.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
+                        AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
+
                     }
+
+                    stopwatch.Stop();
+                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
+
                 case PieceType.Bishop:
-                    foreach (var square in squares) {
-                        var possibleMoves = Bishop.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        List<string> ucis = Move.GetUcis(possibleMoves, square);
-                        foreach (var uci in ucis) {
-                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
-                        }
+                    while (pieceBitboard != 0) {
+                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+
+                        possibleMoves = Bishop.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
+                        AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
+
+                    stopwatch.Stop();
+                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
+
                 case PieceType.Queen:
-                    foreach (var square in squares) {
-                        var possibleMoves = Queen.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        List<string> ucis = Move.GetUcis(possibleMoves, square);
-                        foreach (var uci in ucis) {
-                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
-                        }
+                    while (pieceBitboard != 0) {
+                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+
+                        possibleMoves = Queen.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
+                        AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
+
+                    stopwatch.Stop();
+                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
+
                 case PieceType.King:
-                    foreach (var square in squares) {
-                        var possibleMoves = King.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
-                        List<string> ucis = Move.GetUcis(possibleMoves, square);
-                        foreach (var uci in ucis) {
-                            allPseudoLegalMoves.AddRange(Move.DecodeUciMove(this, uci));
-                        }
+                    possibleMoves = King.ComputePossibleAttacks(pieceBitboard, this, (TurnColor)colorIndex);
+
+                    // check if castling is possible
+                    if (ShouldCheckCastling()) {
+                        possibleMoves |= King.ComputePossibleCastlingMoves(pieceBitboard, this, (TurnColor)colorIndex);
                     }
+
+                    AddAllPossibleMoves(pieceBitboard, possibleMoves, ref allPseudoLegalMoves);
+
+                    stopwatch.Stop();
+                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.ElapsedTicks} ns");
                     break;
+
             }
+            stopwatch.Stop();
+            Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.ElapsedTicks} ns");
         }
 
         // for all pieces, move/attack are the same, except for the pawn, which can attack but not move if the square is empty or has an ally piece.
         // except for king which can't castle for direct attack pattern
         void PopulatePieceAttacks(int colorIndex, int pieceTypeIndex) {
             var pieceBitboard = Position[colorIndex, pieceTypeIndex].BitboardValue;
-            var squares = BitOperations.GetSquaresFromBits(pieceBitboard);
             AttackMatrix[colorIndex, pieceTypeIndex] = 0UL; // reset the corresponding matrix attack of the targeted piece type and color
 
             switch ((PieceType)pieceTypeIndex) {
                 case PieceType.Pawn:
-                    foreach (var square in squares) {
-                        var possibleMoves = Pawn.ComputePossibleAttacks(square, this, (TurnColor)colorIndex);
+                    while (pieceBitboard != 0) {
+                        var lsbIndexBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+                        var possibleMoves = Pawn.ComputePossibleAttacks(lsbIndexBitboard, this, (TurnColor)colorIndex);
                         AttackMatrix[colorIndex, (int)PieceType.Pawn] |= possibleMoves;
                     }
                     break;
                 case PieceType.Rook:
-                    foreach (var square in squares) {
-                        var possibleAttacks = Rook.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
+                    while (pieceBitboard != 0) {
+                        var lsbIndexBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+                        var possibleAttacks = Rook.ComputePossibleMoves(lsbIndexBitboard, this, (TurnColor)colorIndex);
                         AttackMatrix[colorIndex, (int)PieceType.Rook] |= possibleAttacks;
                     }
                     break;
                 case PieceType.Knight:
-                    foreach (var square in squares) {
-                        var possibleAttacks = Knight.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
+                    while (pieceBitboard != 0) {
+                        var lsbIndexBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+                        var possibleAttacks = Knight.ComputePossibleMoves(lsbIndexBitboard, this, (TurnColor)colorIndex);
                         AttackMatrix[colorIndex, (int)PieceType.Knight] |= possibleAttacks;
                     }
                     break;
                 case PieceType.Bishop:
-                    foreach (var square in squares) {
-                        var possibleAttacks = Bishop.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
+                    while (pieceBitboard != 0) {
+                        var lsbIndexBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+                        var possibleAttacks = Bishop.ComputePossibleMoves(lsbIndexBitboard, this, (TurnColor)colorIndex);
                         AttackMatrix[colorIndex, (int)PieceType.Bishop] |= possibleAttacks;
                     }
                     break;
                 case PieceType.Queen:
-                    foreach (var square in squares) {
-                        var possibleAttacks = Queen.ComputePossibleMoves(square, this, (TurnColor)colorIndex);
+                    while (pieceBitboard != 0) {
+                        var lsbIndexBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+                        var possibleAttacks = Queen.ComputePossibleMoves(lsbIndexBitboard, this, (TurnColor)colorIndex);
                         AttackMatrix[colorIndex, (int)PieceType.Queen] |= possibleAttacks;
                     }
                     break;
                 case PieceType.King:
-                    foreach (var square in squares) {
-                        var possibleAttacks = King.ComputePossibleAttacks(square, this, (TurnColor)colorIndex);
+                    while (pieceBitboard != 0) {
+                        var lsbIndexBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
+                        BitOperations.pop_1st_bit(ref pieceBitboard);
+                        var possibleAttacks = King.ComputePossibleAttacks(lsbIndexBitboard, this, (TurnColor)colorIndex);
                         AttackMatrix[colorIndex, (int)PieceType.King] |= possibleAttacks;
                     }
                     break;
@@ -355,17 +448,23 @@ namespace ChessEngine {
         }
 
         List<Move> GenerateMoves() {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
             List<Move> allPseudoLegalMoves = new();
 
             // first opponant color, then own color to check for attacked/unattacked squares => populate the attack matrix
-            for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
+            for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
                 PopulatePieceAttacks((int)State.TurnColor ^ 1, pieceTypeIndex);
             }
 
-            for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
+            for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
                 GetAllPossiblePieceMoves((int)State.TurnColor, pieceTypeIndex, ref allPseudoLegalMoves);
             }
 
+            stopwatch.Stop();
+            Logger.Log(Channel.Benchmark, $"GenerateMoves {allPseudoLegalMoves.Count} pseudo legal moves in {stopwatch.ElapsedTicks} ns");
+            //Logger.Log(Channel.Benchmark, $"PopulatePieceAttacks ({allPseudoLegalMoves.Count}) pseudo legal moves in {stopwatch.Elapsed.TotalNanoseconds}ns");
+            //stopwatch.Stop();
             return allPseudoLegalMoves;
         }
 
@@ -378,8 +477,8 @@ namespace ChessEngine {
 
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsIncheck()) {
-                    LegalMoves.AddRange(allPseudoLegalMoves[i]);
+                if (!IsInCheck()) {
+                    LegalMoves.Add(allPseudoLegalMoves[i]);
                 }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
             }
@@ -387,10 +486,11 @@ namespace ChessEngine {
             return LegalMoves;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         Bitboard GenerateAttacks(TurnColor turnColor) {
             Bitboard allAttackedSquares = 0UL;
 
-            for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
+            for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
                 PopulatePieceAttacks((int)turnColor, pieceTypeIndex);
                 allAttackedSquares |= AttackMatrix[(int)turnColor, pieceTypeIndex];
             }
@@ -398,65 +498,36 @@ namespace ChessEngine {
         }
 
         //check if the king from a color is in check
-        public bool IsIncheck(TurnColor? turncolor = null) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsInCheck(TurnColor? turncolor = null) {
+            Stopwatch stopwatch = Stopwatch.StartNew();
             Bitboard AllAttackedSquares;
 
             if ((turncolor ?? State.TurnColor) == TurnColor.White) { // check if white king is in check
-                //check if white king is in check
                 AllAttackedSquares = GenerateAttacks(TurnColor.Black);
-                //Logger.Log("black attacks squares");
-                //Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
+                //Logger.Log(Channel.Benchmark, $"generated attacks for black in {stopwatch.Elapsed.TotalNanoseconds}ns");
                 return (AllAttackedSquares & WhiteKing.BitboardValue) != 0;
             }
             else {
-                //check if black king is in check
-                //Logger.Log("checking if black king is in check");
-                //Logger.Log("current chessboard");
-                //Logger.Log(this);
-
                 AllAttackedSquares = GenerateAttacks(TurnColor.White);
-                /*Logger.Log("white attacks squares");
-                Logger.Log(StringHelper.FormatAsChessboard(AllAttackedSquares));
-
-                Logger.Log("black king bitboard value");
-                Logger.Log(StringHelper.FormatAsChessboard(Position[(int)TurnColor.Black, (int)PieceType.King]));*/
-
+                //Logger.Log(Channel.Benchmark, $"generated attacks for white in {stopwatch.Elapsed.TotalNanoseconds}ns");
                 return (AllAttackedSquares & BlackKing.BitboardValue) != 0;
             }
         }
 
-        //check if given square is attacked by a color 
-        public bool IsSquareAttackedByColor(Square square, TurnColor turnColor) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool AreSquaresAttackedByColor(Bitboard squares, TurnColor turnColor) {
             Bitboard AllAttackedSquares = 0UL;
-
-            for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
-                AllAttackedSquares |= AttackMatrix[(int)turnColor ^ 1, pieceTypeIndex];
-            }
-
-            return (AllAttackedSquares & BitOperations.ToBitboard(square)) != 0;
-        }
-
-        public bool AreSquaresAttackedByColor(Square[] squares, TurnColor turnColor) {
-            Bitboard AllAttackedSquares = 0UL;
-
-            for (int pieceTypeIndex = 0; pieceTypeIndex < Position.GetLength(1); pieceTypeIndex++) {
+            for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
                 AllAttackedSquares |= AttackMatrix[(int)turnColor, pieceTypeIndex];
             }
 
-            foreach (Square square in squares) {
-                if ((AllAttackedSquares & BitOperations.ToBitboard(square)) != 0) {
-                    return true;
-                }
-            }
-
-            return false;
+            return (AllAttackedSquares & squares) != 0;
         }
 
-        public bool AreAnySquaresOccupied(Square[] squares) {
-            foreach (var square in squares) {
-                if ((BitOperations.ToBitboard(square) & AllPieces) != 0) return true;
-            }
-            return false;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool AreAnySquaresOccupied(Bitboard squares) {
+            return (squares & AllPieces) != 0UL;
         }
 
         public ulong Perft(int depth) {
@@ -468,13 +539,13 @@ namespace ChessEngine {
             if (depth == 0)
                 return 1UL;
 
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
             List<Move> allPseudoLegalMoves = GenerateMoves();
+            stopwatch.Stop();
+            //Logger.Log(Channel.Benchmark, $"GenerateMoves {allPseudoLegalMoves.Count} pseudo legal moves in {stopwatch.ElapsedTicks} ns");
+
             nMoves = allPseudoLegalMoves.Count;
-
-            foreach (var move in allPseudoLegalMoves) { 
-                Logger.Log(Channel.Debug, move, (SpecialMovesCode)move.SpecialCode);
-            }
-
             //Logger.Log(nMoves);
 
             //Logger.Log(Channel.Debug, this);
@@ -483,16 +554,12 @@ namespace ChessEngine {
             //}
 
             for (i = 0; i < nMoves; i++) {
-                Logger.Log(Channel.Debug, $"{State.TurnColor} doing this move:", allPseudoLegalMoves[i], (SpecialMovesCode)allPseudoLegalMoves[i].SpecialCode, this);
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                Logger.Log(Channel.Debug, "done", this);
-                bool isInCheckPerft = IsIncheck(stateStack.ElementAt(0).TurnColor);
+                bool isInCheckPerft = IsInCheck(stateStack.ElementAt(0).TurnColor);
                 if (!isInCheckPerft) {
                     nodes += Perft(depth - 1);
                 }
-                Logger.Log(Channel.Debug, $"{stateStack.ElementAt(0).TurnColor} unmaking move {allPseudoLegalMoves[i]}, new chessboard:");
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
-                Logger.Log(Channel.Debug, this);
             }
 
             //Logger.Log("got", nodes);
@@ -506,6 +573,9 @@ namespace ChessEngine {
             }
 
             List<Move> allPseudoLegalMoves = GenerateMoves();
+            //foreach (var move in allPseudoLegalMoves) {
+            //    Logger.Log(Channel.Debug, $"{indent}└─ {State.TurnColor} {move} {(SpecialMovesCode)move.SpecialCode}");
+            //}
             ulong totalNodes = 0;
 
             for (int i = 0; i < allPseudoLegalMoves.Count; i++) {
@@ -517,12 +587,7 @@ namespace ChessEngine {
                 Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move} {(SpecialMovesCode)move.SpecialCode}");
 
                 Move.MakeMove(this, move);
-
-                if (stateStack.ElementAt(0).TurnColor == TurnColor.White) {
-                    Logger.Log(Channel.Debug, State);
-                }
-                
-                bool isInCheck = IsIncheck(stateStack.ElementAt(0).TurnColor);
+                bool isInCheck = IsInCheck(stateStack.ElementAt(0).TurnColor);
 
                 if (!isInCheck) {
                     ulong subtreeNodes = DrawPerftTree(depth - 1, newIndent);
@@ -551,7 +616,7 @@ namespace ChessEngine {
 
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsIncheck(stateStack.ElementAt(0).TurnColor)) {
+                if (!IsInCheck(stateStack.ElementAt(0).TurnColor)) {
                     ulong moveNodes = Perft(depth - 1);  // Store individual result
                     nodes += moveNodes;                   // Add to total
                     Move.UnmakeMove(this, allPseudoLegalMoves[i]);

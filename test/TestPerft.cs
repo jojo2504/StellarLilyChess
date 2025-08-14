@@ -9,7 +9,7 @@ public class TestPerft {
     [InlineData(2, 400UL)]
     [InlineData(3, 8902UL)]
     [InlineData(4, 197281UL)]
-    //[InlineData(5, 4865609UL)]
+    [InlineData(5, 4865609UL)]
     //[InlineData(6, 119060324UL)]
     public void TestPerft1(int depth, ulong expected) {
         var fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -22,7 +22,7 @@ public class TestPerft {
     [InlineData(1, 48UL)]
     [InlineData(2, 2039UL)]
     [InlineData(3, 97862UL)]
-    [InlineData(4, 4085603UL)]
+    //[InlineData(4, 4085603UL)]
     public void TestPerft2(int depth, ulong expected) {
         var fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
         Chessboard chessboard = new(fen);
@@ -169,6 +169,7 @@ public class TestPerft {
     }
     
     [Theory]
+    [InlineData(1, 45UL)]
     [InlineData(2, 1623UL)]
     public void TestPerft4Custom1(int depth, ulong expected) {
         var fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 0 1";

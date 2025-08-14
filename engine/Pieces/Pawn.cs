@@ -11,10 +11,23 @@ namespace ChessEngine.Pieces {
             {'r', (byte)SpecialMovesCode.RookPromotion},
             {'q', (byte)SpecialMovesCode.QueenPromotion},
         };
+        
+        // Precomputed promotion special codes
+        public static readonly SpecialMovesCode[] QuietPromotions = {
+            SpecialMovesCode.QueenPromotion,
+            SpecialMovesCode.RookPromotion, 
+            SpecialMovesCode.BishopPromotion,
+            SpecialMovesCode.KnightPromotion
+        };
 
-        public static Bitboard ComputePossibleMoves(Square square, Chessboard chessboard, TurnColor? turnColor = null) {
-            var pawnLocation = BitOperations.ToBitboard(square);
+        public static readonly SpecialMovesCode[] CapturePromotions = {
+            SpecialMovesCode.QueenPromotionCapture,  // Queen
+            SpecialMovesCode.RookPromotionCapture,  // Rook
+            SpecialMovesCode.BishopPromotionCapture,  // Bishop  
+            SpecialMovesCode.KnightPromotionCapture   // Knight
+        };
 
+        public static Bitboard ComputePossibleMoves(Bitboard pawnLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             if ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) {
                 // check the single space infront of the white pawn
 
@@ -31,7 +44,7 @@ namespace ChessEngine.Pieces {
                 // Calculate where I can actually attack something + en passant
                 //Logger.Log(BitOperations.ToSquare(pawn_left_attack), BitOperations.ToSquare(pawn_right_attack));
 
-                Bitboard pawn_valid_attacks =   (pawn_left_attack | pawn_right_attack) & 
+                Bitboard pawn_valid_attacks = (pawn_left_attack | pawn_right_attack) &
                                                 (chessboard.AllBlackPieces | BitOperations.ToBitboard(chessboard.State.EnPassantSquare));
                 return pawn_valid_moves | pawn_valid_attacks;
             }
@@ -43,15 +56,14 @@ namespace ChessEngine.Pieces {
                 Bitboard pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) >> 9;
                 Bitboard pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) >> 7;
 
-                Bitboard pawn_valid_attacks =   (pawn_left_attack | pawn_right_attack) & 
+                Bitboard pawn_valid_attacks = (pawn_left_attack | pawn_right_attack) &
                                                 (chessboard.AllWhitePieces | BitOperations.ToBitboard(chessboard.State.EnPassantSquare));
-                return pawn_valid_moves | pawn_valid_attacks;   
+                return pawn_valid_moves | pawn_valid_attacks;
             }
-        
+
         }
 
-        public static Bitboard ComputePossibleAttacks(Square square, Chessboard chessboard, TurnColor? turnColor = null) {
-            var pawnLocation = BitOperations.ToBitboard(square);
+        public static Bitboard ComputePossibleAttacks(Bitboard pawnLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             Bitboard pawn_left_attack;
             Bitboard pawn_right_attack;
             var color = turnColor ?? chessboard.stateStack.ElementAt(0).TurnColor;

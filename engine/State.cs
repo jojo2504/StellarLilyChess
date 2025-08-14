@@ -11,7 +11,6 @@ namespace ChessEngine {
         public PieceType? CapturedPiece;  // null if none
         public bool Checkmated;
         public bool Stalemated;
-        public Move? Move; // no move at the starting position
 
         public override string ToString() {
             return
@@ -26,8 +25,7 @@ namespace ChessEngine {
                 $"EnPassant: {(EnPassantSquare.HasValue ? EnPassantSquare.ToString() : "None")}, " +
                 $"Captured: {(CapturedPiece.HasValue ? CapturedPiece.ToString() : "None")}, " +
                 $"Checkmated: {Checkmated}, " +
-                $"Stalemated: {Stalemated}, " +
-                $"Move: {((Move is not null) ? Move.ToString() : "None")}";
+                $"Stalemated: {Stalemated}";
         }
     }
 }
