@@ -5,7 +5,7 @@ using Bitboard = ulong;
 
 namespace ChessEngine.Pieces {
     public static class Knight {
-        static Bitboard[] KnightAttackMasks = new Bitboard[64];
+        public static Bitboard[] KnightAttackMasks = new Bitboard[64];
 
         static Knight() {
             InitKnightAttacks();

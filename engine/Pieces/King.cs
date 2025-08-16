@@ -6,7 +6,7 @@ using Bitboard = ulong;
 
 namespace ChessEngine.Pieces {
     public static class King {
-        static Bitboard[] KingAttackMasks = new Bitboard[64];
+        public static Bitboard[] KingAttackMasks = new Bitboard[64];
 
         public static readonly ulong[] CastlingRookMasks = [
             1UL << (int)Square.A1,  // White Queen
@@ -17,17 +17,17 @@ namespace ChessEngine.Pieces {
 
         // Precomputed constants - no array allocation!
         private static class CastlingMasks {
-            public const ulong WhiteKingSideAttack = (1UL << (int)Square.E1) | (1UL << (int)Square.F1) | (1UL << (int)Square.G1);
-            public const ulong WhiteKingSideEmpty = (1UL << (int)Square.F1) | (1UL << (int)Square.G1);
+            public static readonly Square[] WhiteKingSideAttack = [Square.E1, Square.F1, Square.G1];
+            public const Bitboard WhiteKingSideEmpty = (1UL << (int)Square.F1) | (1UL << (int)Square.G1);
 
-            public const ulong WhiteQueenSideAttack = (1UL << (int)Square.E1) | (1UL << (int)Square.D1) | (1UL << (int)Square.C1);
-            public const ulong WhiteQueenSideEmpty = (1UL << (int)Square.D1) | (1UL << (int)Square.C1) | (1UL << (int)Square.B1);
+            public static readonly Square[] WhiteQueenSideAttack = [Square.E1, Square.D1, Square.C1];
+            public const Bitboard WhiteQueenSideEmpty = (1UL << (int)Square.D1) | (1UL << (int)Square.C1) | (1UL << (int)Square.B1);
 
-            public const ulong BlackKingSideAttack = (1UL << (int)Square.E8) | (1UL << (int)Square.F8) | (1UL << (int)Square.G8);
-            public const ulong BlackKingSideEmpty = (1UL << (int)Square.F8) | (1UL << (int)Square.G8);
+            public static readonly Square[] BlackKingSideAttack = [Square.E8, Square.F8, Square.G8];
+            public const Bitboard BlackKingSideEmpty = (1UL << (int)Square.F8) | (1UL << (int)Square.G8);
 
-            public const ulong BlackQueenSideAttack = (1UL << (int)Square.E8) | (1UL << (int)Square.D8) | (1UL << (int)Square.C8);
-            public const ulong BlackQueenSideEmpty = (1UL << (int)Square.D8) | (1UL << (int)Square.C8) | (1UL << (int)Square.B8);
+            public static readonly Square[] BlackQueenSideAttack = [Square.E8, Square.D8, Square.C8];
+            public const Bitboard BlackQueenSideEmpty = (1UL << (int)Square.D8) | (1UL << (int)Square.C8) | (1UL << (int)Square.B8);
         }
 
         static King() {
@@ -70,26 +70,26 @@ namespace ChessEngine.Pieces {
 
             if ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) {
                 if (chessboard.State.CanWhiteKingCastle &&
-                !chessboard.AreSquaresAttackedByColor(CastlingMasks.WhiteKingSideAttack, TurnColor.Black) &&
-                !chessboard.AreAnySquaresOccupied(CastlingMasks.WhiteKingSideEmpty)) {
+                !chessboard.AreAnySquaresOccupied(CastlingMasks.WhiteKingSideEmpty) && 
+                !chessboard.AreAnySquaresAttackedByColor(CastlingMasks.WhiteKingSideAttack, TurnColor.Black)) {
                     castle_king = kingLocation << 2;
                 }
 
                 if (chessboard.State.CanWhiteQueenCastle &&
-                !chessboard.AreSquaresAttackedByColor(CastlingMasks.WhiteQueenSideAttack, TurnColor.Black) &&
-                !chessboard.AreAnySquaresOccupied(CastlingMasks.WhiteQueenSideEmpty)) {
+                !chessboard.AreAnySquaresOccupied(CastlingMasks.WhiteQueenSideEmpty) && 
+                !chessboard.AreAnySquaresAttackedByColor(CastlingMasks.WhiteQueenSideAttack, TurnColor.Black)) {
                     castle_queen = kingLocation >> 2;
                 }
             }
             else {
                 if (chessboard.State.CanBlackKingCastle &&
-                !chessboard.AreSquaresAttackedByColor(CastlingMasks.BlackKingSideAttack, TurnColor.White) &&
-                !chessboard.AreAnySquaresOccupied(CastlingMasks.BlackKingSideEmpty)) {
+                !chessboard.AreAnySquaresOccupied(CastlingMasks.BlackKingSideEmpty) &&
+                !chessboard.AreAnySquaresAttackedByColor(CastlingMasks.BlackKingSideAttack, TurnColor.White)) {
                     castle_king = kingLocation << 2;
                 }
                 if (chessboard.State.CanBlackQueenCastle &&
-                !chessboard.AreSquaresAttackedByColor(CastlingMasks.BlackQueenSideAttack, TurnColor.White) &&
-                !chessboard.AreAnySquaresOccupied(CastlingMasks.BlackQueenSideEmpty)) {
+                !chessboard.AreAnySquaresOccupied(CastlingMasks.BlackQueenSideEmpty) &&
+                !chessboard.AreAnySquaresAttackedByColor(CastlingMasks.BlackQueenSideAttack, TurnColor.White)) {
                     castle_queen = kingLocation >> 2;
                 }
             }

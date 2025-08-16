@@ -5,17 +5,19 @@ using Bitboard = ulong;
 
 namespace ChessEngine.Pieces {
     public static class Pawn {
+        public static Bitboard[,] PawnAttackMasks = new Bitboard[2, 64];
+
         public static readonly Dictionary<char, byte> PromotionDict = new() {
             {'n', (byte)SpecialMovesCode.KnightPromotion},
             {'b', (byte)SpecialMovesCode.BishopPromotion},
             {'r', (byte)SpecialMovesCode.RookPromotion},
             {'q', (byte)SpecialMovesCode.QueenPromotion},
         };
-        
+
         // Precomputed promotion special codes
         public static readonly SpecialMovesCode[] QuietPromotions = {
             SpecialMovesCode.QueenPromotion,
-            SpecialMovesCode.RookPromotion, 
+            SpecialMovesCode.RookPromotion,
             SpecialMovesCode.BishopPromotion,
             SpecialMovesCode.KnightPromotion
         };
@@ -26,6 +28,10 @@ namespace ChessEngine.Pieces {
             SpecialMovesCode.BishopPromotionCapture,  // Bishop  
             SpecialMovesCode.KnightPromotionCapture   // Knight
         };
+
+        static Pawn() {
+            InitPawnAttacks();
+        }
 
         public static Bitboard ComputePossibleMoves(Bitboard pawnLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             if ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) {
@@ -63,22 +69,26 @@ namespace ChessEngine.Pieces {
 
         }
 
-        public static Bitboard ComputePossibleAttacks(Bitboard pawnLocation, Chessboard chessboard, TurnColor? turnColor = null) {
+        public static void InitPawnAttacks() {
             Bitboard pawn_left_attack;
             Bitboard pawn_right_attack;
-            var color = turnColor ?? chessboard.stateStack.Peek().TurnColor;
 
-            if (color == TurnColor.White) {
+            for (int i = 0; i < 64; i++) {
+                var pawnLocation = 1UL << i;
                 pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) << 7;
                 pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) << 9;
-            }
-            else {
+                PawnAttackMasks[(int)TurnColor.White, i] = pawn_left_attack | pawn_right_attack;
+
                 pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) >> 9;
                 pawn_right_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_H)) >> 7;
+                PawnAttackMasks[(int)TurnColor.Black, i] = pawn_left_attack | pawn_right_attack;
             }
-
-            var ownSide = (color == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
-            return (pawn_left_attack | pawn_right_attack) & ~ownSide;
         }
-    }
+
+        public static Bitboard ComputePossibleAttacks(Bitboard pawnLocation, Chessboard chessboard, TurnColor turnColor) {
+            Bitboard pawnAttacks = PawnAttackMasks[(int)turnColor , BitOperations.ToIndex(pawnLocation)];
+            var ownSide = (turnColor == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
+            return pawnAttacks & ~ownSide;
+        }
+    }   
 }
