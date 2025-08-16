@@ -66,7 +66,7 @@ namespace ChessEngine.Pieces {
         public static Bitboard ComputePossibleAttacks(Bitboard pawnLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             Bitboard pawn_left_attack;
             Bitboard pawn_right_attack;
-            var color = turnColor ?? chessboard.stateStack.ElementAt(0).TurnColor;
+            var color = turnColor ?? chessboard.stateStack.Peek().TurnColor;
 
             if (color == TurnColor.White) {
                 pawn_left_attack = (pawnLocation & LookupTables.GetFileClear(File.FILE_A)) << 7;

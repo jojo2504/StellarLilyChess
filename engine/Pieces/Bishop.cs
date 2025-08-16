@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using ChessEngine.Magica;
 using ChessEngine.Utils;
 using Bitboard = ulong;
@@ -64,6 +65,7 @@ namespace ChessEngine.Pieces {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bitboard ComputePossibleMoves(Bitboard bishopLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             var sq = BitOperations.ToIndex(bishopLocation);
             var occ = chessboard.AllPieces;

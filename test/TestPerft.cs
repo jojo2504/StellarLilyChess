@@ -10,7 +10,7 @@ public class TestPerft {
     [InlineData(3, 8902UL)]
     [InlineData(4, 197281UL)]
     [InlineData(5, 4865609UL)]
-    //[InlineData(6, 119060324UL)]
+    [InlineData(6, 119060324UL)]
     public void TestPerft1(int depth, ulong expected) {
         var fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         Chessboard chessboard = new(fen);

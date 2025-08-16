@@ -43,7 +43,7 @@ namespace ChessEngine {
                     Logger.Log(Channel.Game, chessboard.ToString());
 
                     Logger.Log(Channel.Game, "new finished (stack):");
-                    Logger.Log(Channel.Game, chessboard.stateStack.ElementAt(0));
+                    Logger.Log(Channel.Game, chessboard.stateStack.Peek());
 
                     Logger.Log(Channel.Game, "------------------------");
                     Logger.Log(Channel.Game, "preview of next turn state (unfinished)");
@@ -69,7 +69,7 @@ namespace ChessEngine {
                     Logger.Log(Channel.Game, chessboard.ToString());
 
                     Logger.Log(Channel.Game, "new finished (stack):");
-                    Logger.Log(Channel.Game, chessboard.stateStack.ElementAt(0));
+                    Logger.Log(Channel.Game, chessboard.stateStack.Peek());
 
                     Logger.Log(Channel.Game, "-------------------------------------------------");
                     Logger.Log(Channel.Game, "preview of next turn state (unfinished)");

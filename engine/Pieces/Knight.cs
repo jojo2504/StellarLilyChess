@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
 using Bitboard = ulong;
@@ -41,6 +42,7 @@ namespace ChessEngine.Pieces {
             }
         }
         
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bitboard ComputePossibleMoves(Bitboard knightLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             var ownSide = ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
             return KnightAttackMasks[BitOperations.ToIndex(knightLocation)] & ~ownSide;

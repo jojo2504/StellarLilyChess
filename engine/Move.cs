@@ -19,10 +19,6 @@ namespace ChessEngine {
             word |= FindSpecialMoveCode(from, to, chessboard);
         }
 
-        public Move(Bitboard from, Bitboard to, SpecialMovesCode promotionCode) {
-            word = (ushort)((BitOperations.ToIndex(from) << 10) | (BitOperations.ToIndex(to) << 4) | (ushort)promotionCode);
-        }
-
         public Square From {
             get {
                 return (Square)((word & 0xFC00) >> 10);

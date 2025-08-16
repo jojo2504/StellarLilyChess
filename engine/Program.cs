@@ -3,15 +3,16 @@ using ChessEngine.Utils.Logging;
 namespace ChessEngine {
     class Program {
         static void Main(string[] args) {
+            // This is the entry point of the application for the perftree tests.
             if (args.Length > 0 && args.Length < 3) {
                 var depth = int.Parse(args[0]);
                 var fen = args[1];
                 //var moves = ulong.Parse(args[2]); // Ignore this value, it's not used in the current context
 
                 Chessboard chessboard = new(fen);
-                chessboard.PerftAndPrint(depth);
+                chessboard.Perftree(depth);
             }
-
+            // This is the entry point of the application for the UCI protocol.
             else {
                 try {
                     var protocol = Console.ReadLine();

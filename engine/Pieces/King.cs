@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
 using Bitboard = ulong;
@@ -56,6 +57,7 @@ namespace ChessEngine.Pieces {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bitboard ComputePossibleAttacks(Bitboard kingLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             Bitboard kingMoves = KingAttackMasks[BitOperations.ToIndex(kingLocation)];
             var ownSide = ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
