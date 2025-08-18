@@ -3,6 +3,6 @@
     "General": { "Active": false },
     "Debug":   { "Active": false },
     "Game":    { "Active": false },
-    "Benchmark": { "Active": true }
+    "Benchmark": { "Active": false }
   }
 }
