@@ -67,6 +67,12 @@ namespace ChessEngine.Pieces {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bitboard ComputePossibleMoves(Bitboard bishopLocation, Chessboard chessboard, TurnColor? turnColor = null) {
+            var ownSide = ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
+            return ComputePossibleAttacks(bishopLocation, chessboard, turnColor) & ~ownSide;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Bitboard ComputePossibleAttacks(Bitboard bishopLocation, Chessboard chessboard, TurnColor? turnColor = null) {
             var sq = BitOperations.ToIndex(bishopLocation);
             var occ = chessboard.AllPieces;
 
@@ -74,8 +80,7 @@ namespace ChessEngine.Pieces {
             occ *= BishopMagicTable[sq].magicNumber;
             occ >>= 55; //64-9
 
-            var ownSide = ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
-            return MagicBishopAttacks[sq, occ] & ~ownSide;
+            return MagicBishopAttacks[sq, occ];
         }
     }
 }

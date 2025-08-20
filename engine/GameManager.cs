@@ -17,6 +17,8 @@ namespace ChessEngine {
 
         public void StartGame() {
             Logger.Log(Channel.Game, "starting game");
+            
+            Span<Move> allLegalMoves = stackalloc Move[256];
             while (true) {
                 var input = Console.ReadLine();
                 string[] parts = input.Split(' ');
@@ -52,29 +54,14 @@ namespace ChessEngine {
 
                 // should start with white, compute move as white, then change the turn color after the 
                 else if (command == "go") {
-                    List<Move> allLegalMoves = chessboard.GenerateLegalMoves();
-                    int nMoves = allLegalMoves.Count;
-
-                    /*Logger.Log(Channel.Game, $"{nMoves} possible moves");
-                    foreach (Move legalMove in allLegalMoves) {
-                        Logger.Log(Channel.Game, legalMove);
-                    }*/
+                    int nMoves = chessboard.GenerateLegalMoves(allLegalMoves);
 
                     Random random = new();
                     int r = random.Next(nMoves);
                     Move move = allLegalMoves[r];
-
                     Move.MakeMove(chessboard, move);
-                    //Logger.Log(Channel.Game, $"Playing {move.ToString().ToLower()}");
-                    //Logger.Log(Channel.Game, chessboard.ToString());
 
-                    //Logger.Log(Channel.Game, "new finished (stack):");
-                    //Logger.Log(Channel.Game, chessboard.State);
-
-                    //Logger.Log(Channel.Game, "-------------------------------------------------");
-                    //Logger.Log(Channel.Game, "preview of next turn state (unfinished)");
-                    //Logger.Log(Channel.Game, chessboard.State);
-
+                    allLegalMoves.Clear();
                     Console.WriteLine($"bestmove {move.ToString().ToLower()}");
                 }
             }

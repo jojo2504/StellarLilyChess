@@ -9,14 +9,17 @@ namespace ChessEngine {
 
     public readonly struct Move {
         public readonly ushort word;
+        public readonly PieceType pieceType;
 
-        public Move(ushort word) {
+        public Move(ushort word, PieceType pieceType) {
             this.word = word;
+            this.pieceType = pieceType;
         }
 
-        public Move(Bitboard from, Bitboard to, Chessboard chessboard) {
+        public Move(Bitboard from, Bitboard to, Chessboard chessboard, PieceType pieceType) {
             word = (ushort)((BitOperations.ToIndex(from) << 10) | (BitOperations.ToIndex(to) << 4));
             word |= FindSpecialMoveCode(from, to, chessboard);
+            this.pieceType = pieceType;
         }
 
         public Square From {
@@ -213,9 +216,16 @@ namespace ChessEngine {
             // Determine the special move code
             word |= FindSpecialMoveCode(fromBitboard, toBitboard, chessboard, promotionChar);
 
-            return new Move(word);
+            for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
+                if ((chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex] & fromBitboard) != 0) {
+                    return new Move(word, (PieceType)pieceTypeIndex);
+                }
+            }
+
+            return new Move(word, PieceType.Pawn); // Default to Pawn if no piece found, should not happen
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void MakeMove(Chessboard chessboard, Move move) {
             var bitboardFrom = move.FromBitboard();
             var bitboardTo = move.ToBitboard();
@@ -223,7 +233,6 @@ namespace ChessEngine {
             // precheck castling
             if (move.CASTLE_FLAG) {
                 chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
-                chessboard.State.HalfMoveClock++;
 
                 if (chessboard.State.TurnColor == TurnColor.White) {
                     UpdatePieceBitboard(ref chessboard.WhiteKing, bitboardFrom, bitboardTo, chessboard, TurnColor.White); // move king
@@ -262,7 +271,6 @@ namespace ChessEngine {
             // precheck if it's en passant first
             else if (move.SpecialCode == (int)SpecialMovesCode.EpCapture) {
                 chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
-                chessboard.State.HalfMoveClock = 0;
 
                 if (chessboard.State.TurnColor == TurnColor.White) {
                     UpdatePieceBitboard(ref chessboard.BlackPawns, bitboardTo >> 8, chessboard, TurnColor.Black);
@@ -284,133 +292,131 @@ namespace ChessEngine {
 
             // no special move, brute force to find correct piece to move
             else {
-                for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
-                    if ((chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex] & bitboardFrom) != 0) {
-                        // quiet moves
-                        if ((chessboard.AllPieces & bitboardTo) == 0) {
-                            if (pieceTypeIndex == (int)PieceType.Pawn) {
-                                chessboard.State.HalfMoveClock = 0;
-                                // check promotion
-                                switch (move.SpecialCode) {
-                                    case (int)SpecialMovesCode.KnightPromotion:
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new knight
-                                        break;
-
-                                    case (int)SpecialMovesCode.BishopPromotion:
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new bishop
-                                        break;
-
-                                    case (int)SpecialMovesCode.RookPromotion:
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new rook
-                                        break;
-
-                                    case (int)SpecialMovesCode.QueenPromotion:
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new queen
-                                        break;
-
-                                    default: // no promotion
-                                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex], bitboardFrom, bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new queen
-                                        break;
-                                }
-                            }
-                            else {
-                                chessboard.State.HalfMoveClock++;
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex], bitboardFrom, bitboardTo, chessboard, chessboard.State.TurnColor); // move piece
-                            }
-                            chessboard.State.CapturedPiece = null;
-                        }
-                        // capture
-                        else {
-                            chessboard.State.HalfMoveClock = 0;
-
-                            // check which capture piece it is
-                            for (int opponantPieceTypeIndex = 0; opponantPieceTypeIndex < 6; opponantPieceTypeIndex++) {
-                                if ((chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex] & bitboardTo) != 0) {
-                                    // update piece positions and existance
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex], bitboardTo, chessboard, chessboard.State.TurnColor ^ TurnColor.Black); // remove captured piece
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex], bitboardFrom, bitboardTo, chessboard, chessboard.State.TurnColor); // move piece
-
-                                    // check promotion
-                                    switch (move.SpecialCode) {
-                                        case (int)SpecialMovesCode.KnightPromotionCapture:
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new knight
-                                            break;
-
-                                        case (int)SpecialMovesCode.BishopPromotionCapture:
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new bishop
-                                            break;
-
-                                        case (int)SpecialMovesCode.RookPromotionCapture:
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new rook
-                                            break;
-
-                                        case (int)SpecialMovesCode.QueenPromotionCapture:
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
-                                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new queen
-                                            break;
-                                    }
-
-                                    chessboard.State.CapturedPiece = (PieceType)opponantPieceTypeIndex;
-                                }
-                            }
-                        }
-
-                        //push the current state of the position onto the stack
-                        chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
-
-                        chessboard.State.CanWhiteQueenCastle &= (chessboard.WhiteRooks & King.CastlingRookMasks[0]) != 0;
-                        chessboard.State.CanWhiteKingCastle &= (chessboard.WhiteRooks & King.CastlingRookMasks[1]) != 0;
-                        chessboard.State.CanBlackQueenCastle &= (chessboard.BlackRooks & King.CastlingRookMasks[2]) != 0;
-                        chessboard.State.CanBlackKingCastle &= (chessboard.BlackRooks & King.CastlingRookMasks[3]) != 0;
-
-                        // reset en passant square
-                        chessboard.State.EnPassantSquare = null;
-
-                        switch (pieceTypeIndex) {
-                            // (right to castle)
-                            case (int)PieceType.King:
-                                if (move.From == Square.E1) {
-                                    chessboard.State.CanWhiteKingCastle = false;
-                                    chessboard.State.CanWhiteQueenCastle = false;
-                                }
-                                else if (move.From == Square.E8) {
-                                    chessboard.State.CanBlackKingCastle = false;
-                                    chessboard.State.CanBlackQueenCastle = false;
-                                }
+                // quiet moves
+                if ((chessboard.AllPieces & bitboardTo) == 0) {
+                    if (move.pieceType == (int)PieceType.Pawn) {
+                        // check promotion
+                        switch (move.SpecialCode) {
+                            case (int)SpecialMovesCode.KnightPromotion:
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new knight
                                 break;
 
-                            case (int)PieceType.Pawn:
-                                // double pawn push
-                                if (move.SpecialCode == (int)SpecialMovesCode.DoublePawnPush) {
-                                    if (chessboard.State.TurnColor == TurnColor.White) {
-                                        chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) >> 8);
-                                    }
-                                    else {
-                                        chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) << 8);
-                                    }
-                                    //Logger.Log(Channel.Debug, "Setting en passant on square:", chessboard.State.EnPassantSquare);
-                                }
+                            case (int)SpecialMovesCode.BishopPromotion:
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new bishop
+                                break;
+
+                            case (int)SpecialMovesCode.RookPromotion:
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new rook
+                                break;
+
+                            case (int)SpecialMovesCode.QueenPromotion:
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardFrom, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new queen
+                                break;
+
+                            default: // no promotion
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], bitboardFrom, bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new queen
                                 break;
                         }
-                        break;
+                    }
+                    else {
+                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], bitboardFrom, bitboardTo, chessboard, chessboard.State.TurnColor); // move piece
+                    }
+                    chessboard.State.CapturedPiece = null;
+                }
+                // capture
+                else {
+                    // check which capture piece it is
+                    for (int opponantPieceTypeIndex = 0; opponantPieceTypeIndex < 6; opponantPieceTypeIndex++) {
+                        if ((chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex] & bitboardTo) != 0) {
+                            // update piece positions and existance
+                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex], bitboardTo, chessboard, chessboard.State.TurnColor ^ TurnColor.Black); // remove captured piece
+                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], bitboardFrom, bitboardTo, chessboard, chessboard.State.TurnColor); // move piece
+
+                            // check promotion
+                            switch (move.SpecialCode) {
+                                case (int)SpecialMovesCode.KnightPromotionCapture:
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new knight
+                                    break;
+
+                                case (int)SpecialMovesCode.BishopPromotionCapture:
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new bishop
+                                    break;
+
+                                case (int)SpecialMovesCode.RookPromotionCapture:
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new rook
+                                    break;
+
+                                case (int)SpecialMovesCode.QueenPromotionCapture:
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], bitboardTo, chessboard, chessboard.State.TurnColor); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], bitboardTo, chessboard, chessboard.State.TurnColor); // spawn new queen
+                                    break;
+                            }
+
+                            chessboard.State.CapturedPiece = (PieceType)opponantPieceTypeIndex;
+                        }
                     }
                 }
+
+                //push the current state of the position onto the stack
+                chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
+
+                if (chessboard.State.CapturedPiece.HasValue || move.pieceType == PieceType.Pawn) {
+                    chessboard.State.HalfMoveClock = 0;
+                }
+                else {
+                    chessboard.State.HalfMoveClock++;
+                }
+
+                chessboard.State.CanWhiteQueenCastle &= (chessboard.WhiteRooks & King.CastlingRookMasks[0]) != 0;
+                chessboard.State.CanWhiteKingCastle &= (chessboard.WhiteRooks & King.CastlingRookMasks[1]) != 0;
+                chessboard.State.CanBlackQueenCastle &= (chessboard.BlackRooks & King.CastlingRookMasks[2]) != 0;
+                chessboard.State.CanBlackKingCastle &= (chessboard.BlackRooks & King.CastlingRookMasks[3]) != 0;
+
+                // reset en passant square
+                chessboard.State.EnPassantSquare = null;
+
+                switch (move.pieceType) {
+                    // (right to castle)
+                    case PieceType.King:
+                        if (move.From == Square.E1) {
+                            chessboard.State.CanWhiteKingCastle = false;
+                            chessboard.State.CanWhiteQueenCastle = false;
+                        }
+                        else if (move.From == Square.E8) {
+                            chessboard.State.CanBlackKingCastle = false;
+                            chessboard.State.CanBlackQueenCastle = false;
+                        }
+                        break;
+
+                    case PieceType.Pawn:
+                        // double pawn push
+                        if (move.SpecialCode == (int)SpecialMovesCode.DoublePawnPush) {
+                            if (chessboard.State.TurnColor == TurnColor.White) {
+                                chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) >> 8);
+                            }
+                            else {
+                                chessboard.State.EnPassantSquare = BitOperations.ToSquare(BitOperations.ToBitboard(move.To) << 8);
+                            }
+                        }
+                        break;
+                }
             }
-            
+
             chessboard.State.TurnColor ^= TurnColor.Black; // toggle color
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void UnmakeMove(Chessboard chessboard, Move move) {
             var bitboardFrom = move.FromBitboard();
             var bitboardTo = move.ToBitboard();
-            
+
             //restore the previous state before latest move pushed move, the latest state provide the turn to play,
             ref var latestState = ref chessboard.stateStack[chessboard.plyIndex--]; // pop the latest move form the stack then decrement
             chessboard.State = latestState;
