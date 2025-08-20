@@ -43,9 +43,5 @@ namespace ChessEngine.Utils {
         public static string FormatAsChessboard(Bitboard bitboard) {
             return FormatAsChessboard(ToBinary(bitboard));
         }
-
-        public static string FormatAsChessboard(RefBitboard refBitboard) {
-            return FormatAsChessboard(ToBinary(refBitboard.BitboardValue));
-        }
     }
 }

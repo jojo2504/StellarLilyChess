@@ -49,64 +49,34 @@ namespace ChessEngine {
         Black
     }
 
-    //just a simple reference wrapper class
-    public sealed class RefBitboard {
-        public Bitboard BitboardValue;
-    }
-
     public class Chessboard {
-        public RefBitboard WhitePawns;
-        public RefBitboard WhiteRooks;
-        public RefBitboard WhiteKnights;
-        public RefBitboard WhiteBishops;
-        public RefBitboard WhiteQueens;
-        public RefBitboard WhiteKing;
+        public Bitboard[,] Position = new Bitboard[2, 6];
+        public Bitboard AllWhitePieces = 0UL;
+        public Bitboard AllBlackPieces = 0UL;
+        public Bitboard AllPieces = 0UL;
 
-        public RefBitboard BlackPawns;
-        public RefBitboard BlackRooks;
-        public RefBitboard BlackKnights;
-        public RefBitboard BlackBishops;
-        public RefBitboard BlackQueens;
-        public RefBitboard BlackKing;
-
-        public Bitboard AllWhitePieces {
-            get {
-                return WhitePawns.BitboardValue
-                     | WhiteRooks.BitboardValue
-                     | WhiteKnights.BitboardValue
-                     | WhiteBishops.BitboardValue
-                     | WhiteQueens.BitboardValue
-                     | WhiteKing.BitboardValue;
-            }
-        }
-
-        public Bitboard AllBlackPieces {
-            get {
-                return BlackPawns.BitboardValue
-                    | BlackRooks.BitboardValue
-                    | BlackKnights.BitboardValue
-                    | BlackBishops.BitboardValue
-                    | BlackQueens.BitboardValue
-                    | BlackKing.BitboardValue;
-            }
-        }
-
-        public Bitboard AllPieces {
-            get {
-                return AllWhitePieces | AllBlackPieces;
-            }
-        }
-
-        public RefBitboard[,] Position = new RefBitboard[2, 6];
         public State State = new();
-        public Stack<State> stateStack = new();
+        public const ushort MaxPly = 256;
+        public State[] stateStack = new State[MaxPly];
+        public ushort plyIndex = 0;
+
+        public ref Bitboard WhitePawns => ref Position[(int)TurnColor.White, (int)PieceType.Pawn];
+        public ref Bitboard WhiteRooks => ref Position[(int)TurnColor.White, (int)PieceType.Rook];
+        public ref Bitboard WhiteKnights => ref Position[(int)TurnColor.White, (int)PieceType.Knight];
+        public ref Bitboard WhiteBishops => ref Position[(int)TurnColor.White, (int)PieceType.Bishop];
+        public ref Bitboard WhiteQueens => ref Position[(int)TurnColor.White, (int)PieceType.Queen];
+        public ref Bitboard WhiteKing => ref Position[(int)TurnColor.White, (int)PieceType.King];
+        public ref Bitboard BlackPawns => ref Position[(int)TurnColor.Black, (int)PieceType.Pawn];
+        public ref Bitboard BlackRooks => ref Position[(int)TurnColor.Black, (int)PieceType.Rook];
+        public ref Bitboard BlackKnights => ref Position[(int)TurnColor.Black, (int)PieceType.Knight];
+        public ref Bitboard BlackBishops => ref Position[(int)TurnColor.Black, (int)PieceType.Bishop];
+        public ref Bitboard BlackQueens => ref Position[(int)TurnColor.Black, (int)PieceType.Queen];
+        public ref Bitboard BlackKing => ref Position[(int)TurnColor.Black, (int)PieceType.King];
 
         public Chessboard(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
             ParseFEN(fen);
             InitializeState();
-            stateStack.Push(State); // halfmove 0
-
-            InitializeChessBoard();
+            stateStack[plyIndex++] = State; // halfmove 0
         }
 
         void InitializeState() {
@@ -116,18 +86,79 @@ namespace ChessEngine {
 
         void ParseFEN(string fen) {
             var pieceSetters = new Dictionary<char, Action<int>> {
-                { 'P', idx => WhitePawns.BitboardValue |= 1UL << idx },
-                { 'N', idx => WhiteKnights.BitboardValue |= 1UL << idx },
-                { 'B', idx => WhiteBishops.BitboardValue |= 1UL << idx },
-                { 'R', idx => WhiteRooks.BitboardValue |= 1UL << idx },
-                { 'Q', idx => WhiteQueens.BitboardValue |= 1UL << idx },
-                { 'K', idx => WhiteKing.BitboardValue |= 1UL << idx },
-                { 'p', idx => BlackPawns.BitboardValue |= 1UL << idx },
-                { 'n', idx => BlackKnights.BitboardValue |= 1UL << idx },
-                { 'b', idx => BlackBishops.BitboardValue |= 1UL << idx },
-                { 'r', idx => BlackRooks.BitboardValue |= 1UL << idx },
-                { 'q', idx => BlackQueens.BitboardValue |= 1UL << idx },
-                { 'k', idx => BlackKing.BitboardValue |= 1UL << idx },
+                { 'P', idx => {
+                    var changes = 1UL << idx;
+                    WhitePawns |= changes;
+                    AllWhitePieces |= changes;
+                    AllPieces |= changes;
+                    }
+                },
+                { 'N', idx => {
+                    var changes = 1UL << idx;
+                    WhiteKnights |= changes;
+                    AllWhitePieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'B', idx => {
+                    var changes = 1UL << idx;
+                    WhiteBishops |= changes;
+                    AllWhitePieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'R', idx => {
+                    var changes = 1UL << idx;
+                    WhiteRooks |= changes;
+                    AllWhitePieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'Q', idx => {
+                    var changes = 1UL << idx;
+                    WhiteQueens |= changes;
+                    AllWhitePieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'K', idx => {
+                    var changes = 1UL << idx;
+                    WhiteKing |= changes;
+                    AllWhitePieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'p', idx => {
+                    var changes = 1UL << idx;
+                    BlackPawns |= changes;
+                    AllBlackPieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'n', idx => {
+                    var changes = 1UL << idx;
+                    BlackKnights |= changes;
+                    AllBlackPieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'b', idx => {
+                    var changes = 1UL << idx;
+                    BlackBishops |= changes;
+                    AllBlackPieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'r', idx => {
+                    var changes = 1UL << idx;
+                    BlackRooks |= changes;
+                    AllBlackPieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'q', idx => {
+                    var changes = 1UL << idx;
+                    BlackQueens |= changes;
+                    AllBlackPieces |= changes;
+                    AllPieces |= changes;
+                }},
+                { 'k', idx => {
+                    var changes = 1UL << idx;
+                    BlackKing |= changes;
+                    AllBlackPieces |= changes;
+                    AllPieces |= changes;
+                }},
             };
 
             var parts = fen.Split(" ");
@@ -172,19 +203,6 @@ namespace ChessEngine {
             State.HalfMoveClock = Convert.ToInt32(halfMove);
             State.FullMoveNumber = Convert.ToInt32(FullMove);
 
-            WhitePawns = new() { BitboardValue = 0UL };
-            WhiteRooks = new() { BitboardValue = 0UL };
-            WhiteKnights = new() { BitboardValue = 0UL };
-            WhiteBishops = new() { BitboardValue = 0UL };
-            WhiteQueens = new() { BitboardValue = 0UL };
-            WhiteKing = new() { BitboardValue = 0UL };
-            BlackPawns = new() { BitboardValue = 0UL };
-            BlackRooks = new() { BitboardValue = 0UL };
-            BlackKnights = new() { BitboardValue = 0UL };
-            BlackBishops = new() { BitboardValue = 0UL };
-            BlackQueens = new() { BitboardValue = 0UL };
-            BlackKing = new() { BitboardValue = 0UL };
-
             var ranks = piecePlacement.Split("/");
             var overallIndexSquare = 0;
             foreach (var rank in ranks) {
@@ -194,43 +212,28 @@ namespace ChessEngine {
                         overallIndexSquare += letter - '0';
                     }
                     else if (pieceSetters.TryGetValue(letter, out var setPiece)) {
-                        setPiece(63 - overallIndexSquare); // or whatever your index calculation is
+                        setPiece(63 - overallIndexSquare);
                         overallIndexSquare++;
                     }
                 }
             }
         }
 
-        void InitializeChessBoard() {
-            Position[(int)TurnColor.White, (int)PieceType.Pawn] = WhitePawns;
-            Position[(int)TurnColor.White, (int)PieceType.Rook] = WhiteRooks;
-            Position[(int)TurnColor.White, (int)PieceType.Knight] = WhiteKnights;
-            Position[(int)TurnColor.White, (int)PieceType.Bishop] = WhiteBishops;
-            Position[(int)TurnColor.White, (int)PieceType.Queen] = WhiteQueens;
-            Position[(int)TurnColor.White, (int)PieceType.King] = WhiteKing;
-            Position[(int)TurnColor.Black, (int)PieceType.Pawn] = BlackPawns;
-            Position[(int)TurnColor.Black, (int)PieceType.Rook] = BlackRooks;
-            Position[(int)TurnColor.Black, (int)PieceType.Knight] = BlackKnights;
-            Position[(int)TurnColor.Black, (int)PieceType.Bishop] = BlackBishops;
-            Position[(int)TurnColor.Black, (int)PieceType.Queen] = BlackQueens;
-            Position[(int)TurnColor.Black, (int)PieceType.King] = BlackKing;
-        }
-
         public override string ToString() {
             // TODO : rework this absolute mess
             var ChessBoardState = new string('0', 64);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhitePawns.BitboardValue).Replace('1', 'P'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteRooks.BitboardValue).Replace('1', 'R'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteKnights.BitboardValue).Replace('1', 'N'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteBishops.BitboardValue).Replace('1', 'B'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteQueens.BitboardValue).Replace('1', 'Q'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteKing.BitboardValue).Replace('1', 'K'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackPawns.BitboardValue).Replace('1', 'p'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackRooks.BitboardValue).Replace('1', 'r'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackKnights.BitboardValue).Replace('1', 'n'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackBishops.BitboardValue).Replace('1', 'b'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackQueens.BitboardValue).Replace('1', 'q'), ChessBoardState);
-            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackKing.BitboardValue).Replace('1', 'k'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhitePawns).Replace('1', 'P'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteRooks).Replace('1', 'R'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteKnights).Replace('1', 'N'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteBishops).Replace('1', 'B'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteQueens).Replace('1', 'Q'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(WhiteKing).Replace('1', 'K'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackPawns).Replace('1', 'p'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackRooks).Replace('1', 'r'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackKnights).Replace('1', 'n'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackBishops).Replace('1', 'b'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackQueens).Replace('1', 'q'), ChessBoardState);
+            ChessBoardState = StringHelper.MergeStrings(StringHelper.ToBinary(BlackKing).Replace('1', 'k'), ChessBoardState);
             return StringHelper.FormatAsChessboard(ChessBoardState.Replace('0', '.'));
         }
 
@@ -301,7 +304,7 @@ namespace ChessEngine {
         void GetAllPossiblePieceMoves(int colorIndex, int pieceTypeIndex, ref List<Move> allPseudoLegalMoves) {
             Stopwatch stopwatch = Stopwatch.StartNew();
 
-            var pieceBitboard = Position[colorIndex, pieceTypeIndex].BitboardValue;
+            var pieceBitboard = Position[colorIndex, pieceTypeIndex];
             Bitboard possibleMoves;
 
             switch ((PieceType)pieceTypeIndex) {
@@ -415,7 +418,7 @@ namespace ChessEngine {
 
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsInCheck(stateStack.Peek().TurnColor)) {
+                if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
                     LegalMoves.Add(allPseudoLegalMoves[i]);
                 }
                 Move.UnmakeMove(this, allPseudoLegalMoves[i]);
@@ -429,7 +432,7 @@ namespace ChessEngine {
         public bool IsInCheck(TurnColor turncolor) {
             Stopwatch stopwatch = Stopwatch.StartNew();
 
-            var kingBitboard = Position[(int)turncolor, (int)PieceType.King].BitboardValue;
+            var kingBitboard = Position[(int)turncolor, (int)PieceType.King];
             return IsSquareAttackedByColor(BitOperations.ToSquare(kingBitboard), turncolor ^ TurnColor.Black);
         }
 
@@ -439,21 +442,21 @@ namespace ChessEngine {
             //Logger.Log(Channel.Debug, $"Checking if square {square} is attacked by {turnColor}");
 
             // Check pawn attacks
-            Bitboard pawns = Position[(int)turnColor, (int)PieceType.Pawn].BitboardValue;
+            Bitboard pawns = Position[(int)turnColor, (int)PieceType.Pawn];
             if ((Pawn.PawnAttackMasks[(int)turnColor ^ 1, squareIndex] & pawns) != 0) {
                 //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} pawn");
                 return true;
             }
 
             // Check knight attacks
-            Bitboard knights = Position[(int)turnColor, (int)PieceType.Knight].BitboardValue;
+            Bitboard knights = Position[(int)turnColor, (int)PieceType.Knight];
             if ((Knight.KnightAttackMasks[squareIndex] & knights) != 0) {
                 //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} knight");
                 return true;
             }
 
             // Check king attacks
-            Bitboard king = Position[(int)turnColor, (int)PieceType.King].BitboardValue;
+            Bitboard king = Position[(int)turnColor, (int)PieceType.King];
             if ((King.KingAttackMasks[squareIndex] & king) != 0) {
                 //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} king");
                 return true;
@@ -461,8 +464,8 @@ namespace ChessEngine {
 
             // Check bishop and queen attacks (diagonal)
             //Logger.Log(Channel.Debug, StringHelper.FormatAsChessboard(Bishop.ComputePossibleMoves(BitOperations.ToBitboard(square), this, turnColor)));
-            Bitboard bishopsQueens = Position[(int)turnColor, (int)PieceType.Queen].BitboardValue |
-                                     Position[(int)turnColor, (int)PieceType.Bishop].BitboardValue;
+            Bitboard bishopsQueens = Position[(int)turnColor, (int)PieceType.Queen] |
+                                     Position[(int)turnColor, (int)PieceType.Bishop];
             //Logger.Log(Channel.Debug, StringHelper.FormatAsChessboard(bishopsQueens));
             if ((Bishop.ComputePossibleMoves(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & bishopsQueens) != 0) {
                 //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} bishopQueen");
@@ -470,8 +473,8 @@ namespace ChessEngine {
             }
 
             // Check rook and queen attacks (straight lines)
-            Bitboard rooksQueens = Position[(int)turnColor, (int)PieceType.Queen].BitboardValue |
-                                   Position[(int)turnColor, (int)PieceType.Rook].BitboardValue;
+            Bitboard rooksQueens = Position[(int)turnColor, (int)PieceType.Queen] |
+                                   Position[(int)turnColor, (int)PieceType.Rook];
             if ((Rook.ComputePossibleMoves(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & rooksQueens) != 0) {
                 //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} bishopQueen");
                 return true;
@@ -499,7 +502,7 @@ namespace ChessEngine {
         }
 
         public ulong Perft(int depth) {
-            //return DrawPerftTree(depth, indent: "");
+            return DrawPerftTree(depth, indent: "");
 
             if (depth == 0)
                 return 1UL;
@@ -512,7 +515,7 @@ namespace ChessEngine {
             foreach (var move in CollectionsMarshal.AsSpan(allPseudoLegalMoves)) {  // 7500 ns
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 Move.MakeMove(this, move);
-                if (!IsInCheck(stateStack.Peek().TurnColor)) {
+                if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
                     nodes += Perft(depth - 1);
                 }
                 Move.UnmakeMove(this, move);
@@ -524,7 +527,7 @@ namespace ChessEngine {
 
             /*for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                bool isInCheckPerft = IsInCheck(stateStack.Peek().TurnColor);
+                bool isInCheckPerft = IsInCheck(stateStack[plyIndex].TurnColor);
                 if (!isInCheckPerft) {
                     nodes += Perft(depth - 1);
                 }
@@ -555,9 +558,12 @@ namespace ChessEngine {
                 Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move} {(SpecialMovesCode)move.SpecialCode}");
 
                 Move.MakeMove(this, move);
-                bool isInCheck = IsInCheck(stateStack.Peek().TurnColor);
-
+                bool isInCheck = IsInCheck(stateStack[plyIndex].TurnColor);
                 if (!isInCheck) {
+                    //Logger.Log(Channel.Debug, "AllWhitePieces", StringHelper.FormatAsChessboard(AllWhitePieces));
+                    //Logger.Log(Channel.Debug, "AllBlackPieces", StringHelper.FormatAsChessboard(AllBlackPieces));
+                    //Logger.Log(Channel.Debug, "AllPieces", StringHelper.FormatAsChessboard(AllPieces));
+                    Logger.Log(Channel.Debug, this);
                     ulong subtreeNodes = DrawPerftTree(depth - 1, newIndent);
                     //Logger.Log(Channel.Debug, $"{newIndent}└─ nodes: {subtreeNodes}");
                     totalNodes += subtreeNodes;
@@ -584,7 +590,7 @@ namespace ChessEngine {
 
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsInCheck(stateStack.Peek().TurnColor)) {
+                if (!IsInCheck(stateStack[plyIndex - 1].TurnColor)) {
                     ulong moveNodes = Perft(depth - 1);  // Store individual result
                     nodes += moveNodes;                   // Add to total
                     Move.UnmakeMove(this, allPseudoLegalMoves[i]);

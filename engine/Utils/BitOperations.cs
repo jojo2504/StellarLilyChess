@@ -99,7 +99,7 @@ namespace ChessEngine.Utils {
         public static Square ToSquare(Bitboard bitboard) {
             var zeroCount = System.Numerics.BitOperations.TrailingZeroCount(bitboard);
             if (zeroCount < 0 || zeroCount > 63) {
-                Logger.Warning(Channel.General, "bitboard value should not be 0UL");
+                Logger.Warning(Channel.Debug, "bitboard value should not be 0UL");
                 return (Square)64;
             }
             return (Square)zeroCount;

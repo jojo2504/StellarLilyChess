@@ -30,7 +30,7 @@ public class TestPerft {
         Logger.Log(Channel.Debug, chessboard);
         Assert.Equal(expected, chessboard.Perft(depth));
     }
-    
+
     [Theory]
     [InlineData(1, 14UL)]
     [InlineData(2, 191UL)]
@@ -55,7 +55,7 @@ public class TestPerft {
 
         Logger.Log(Channel.Debug, "test perft position 4");
         Logger.Log(Channel.Debug, chessboard);
-                    
+
         Assert.Equal(expected, chessboard.Perft(depth));
         Logger.Log(Channel.Debug, "--------------------------");
     }
@@ -167,7 +167,7 @@ public class TestPerft {
         Assert.Equal(expected, chessboard.Perft(depth));
         Logger.Log(Channel.Debug, "--------------------------");
     }
-    
+
     [Theory]
     [InlineData(1, 45UL)]
     [InlineData(2, 1623UL)]
@@ -193,17 +193,27 @@ public class TestPerft {
     [Theory]
     [InlineData(1, 4UL)]
     public void TestPromotion(int depth, ulong expected) {
-        var fen = "7k/8/6Q1/8/8/8/3p4/8 b - - 0 1";
+        var fen = "K6k/8/6Q1/8/8/8/3p4/8 b - - 0 1";
         Chessboard chessboard = new(fen);
         Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
         Assert.Equal(expected, chessboard.Perft(depth));
         Logger.Log(Channel.Debug, "--------------------------");
     }
-    
+
     [Theory]
     [InlineData(4, 10087UL)]
     public void TestCustomwtfisgoingon(int depth, ulong expected) {
         var fen = "7k/8/8/8/1p6/7p/P5P1/R3K3 w Q - 0 1";
+        Chessboard chessboard = new(fen);
+        Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
+        Assert.Equal(expected, chessboard.Perft(depth));
+        Logger.Log(Channel.Debug, "--------------------------");
+    }
+
+    [Theory]
+    [InlineData(2, 3UL)]
+    public void TestCapturePerft2(int depth, ulong expected) {
+        var fen = "8/1p3p1p/5PkP/5pPp/P4PpP/5pKp/5P1P/8 b - - 0 2";
         Chessboard chessboard = new(fen);
         Logger.Log(Channel.Debug, "searching depth:", depth, chessboard);
         Assert.Equal(expected, chessboard.Perft(depth));
