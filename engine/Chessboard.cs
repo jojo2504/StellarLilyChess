@@ -244,7 +244,6 @@ namespace ChessEngine {
         }
 
         private void AddAllPossibleMoves(Bitboard fromBitboard, Bitboard possibleMoves, ref List<Move> allPseudoLegalMoves) {
-            Stopwatch stopwatch = Stopwatch.StartNew();
             while (possibleMoves != 0) {
                 var toBitboard = BitOperations.LsbIndexBitboard(possibleMoves);
                 BitOperations.del_1st_bit(ref possibleMoves);
@@ -253,8 +252,6 @@ namespace ChessEngine {
                 var move = new Move(from: fromBitboard, to: toBitboard, chessboard: this);
                 allPseudoLegalMoves.Add(move);
             }
-            stopwatch.Stop();
-            //Logger.Log(Channel.Benchmark, $"AddAllPossibleMoves {allPseudoLegalMoves.Count} pseudo legal moves in {stopwatch.ElapsedTicks} ns");
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)] not good for performance
@@ -302,7 +299,6 @@ namespace ChessEngine {
         }
 
         void GetAllPossiblePieceMoves(int colorIndex, int pieceTypeIndex, ref List<Move> allPseudoLegalMoves) {
-            Stopwatch stopwatch = Stopwatch.StartNew();
 
             var pieceBitboard = Position[colorIndex, pieceTypeIndex];
             Bitboard possibleMoves;
@@ -317,8 +313,6 @@ namespace ChessEngine {
                         AddAllPossibleMovesPawn(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
 
-                    stopwatch.Stop();
-                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
 
                 case PieceType.Rook:
@@ -327,13 +321,9 @@ namespace ChessEngine {
                         BitOperations.del_1st_bit(ref pieceBitboard);
 
                         possibleMoves = Rook.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
-                        stopwatch.Stop();
-                        //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.ElapsedTicks} ns");
                         AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
 
-                    stopwatch.Stop();
-                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.ElapsedTicks} ns");
                     break;
 
                 case PieceType.Knight:
@@ -345,8 +335,6 @@ namespace ChessEngine {
                         AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
 
-                    stopwatch.Stop();
-                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
 
                 case PieceType.Bishop:
@@ -358,8 +346,6 @@ namespace ChessEngine {
                         AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
 
-                    stopwatch.Stop();
-                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
 
                 case PieceType.Queen:
@@ -371,8 +357,6 @@ namespace ChessEngine {
                         AddAllPossibleMoves(fromBitboard, possibleMoves, ref allPseudoLegalMoves);
                     }
 
-                    stopwatch.Stop();
-                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.Elapsed.TotalNanoseconds} ns");
                     break;
 
                 case PieceType.King:
@@ -385,27 +369,19 @@ namespace ChessEngine {
 
                     AddAllPossibleMoves(pieceBitboard, possibleMoves, ref allPseudoLegalMoves);
 
-                    stopwatch.Stop();
-                    //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.ElapsedTicks} ns");
                     break;
 
             }
 
-            stopwatch.Stop();
-            //Logger.Log(Channel.Benchmark, $"GetAllPossiblePieceMoves {allPseudoLegalMoves.Count} pseudo legal moves for {(PieceType)pieceTypeIndex} in {stopwatch.ElapsedTicks} ns");
         }
 
         List<Move> GenerateMoves() {
-            Stopwatch stopwatch = Stopwatch.StartNew();
 
-            List<Move> allPseudoLegalMoves = new();
+            List<Move> allPseudoLegalMoves = new(64);
             for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
                 GetAllPossiblePieceMoves((int)State.TurnColor, pieceTypeIndex, ref allPseudoLegalMoves);
             }
 
-            stopwatch.Stop();
-            //sLogger.Log(Channel.Benchmark, $"GenerateMoves {allPseudoLegalMoves.Count} pseudo legal moves in {stopwatch.ElapsedTicks} ns");
-            //stopwatch.Stop();
             return allPseudoLegalMoves;
         }
 
@@ -430,8 +406,6 @@ namespace ChessEngine {
         //check if the king from a color is in check
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsInCheck(TurnColor turncolor) {
-            Stopwatch stopwatch = Stopwatch.StartNew();
-
             var kingBitboard = Position[(int)turncolor, (int)PieceType.King];
             return IsSquareAttackedByColor(BitOperations.ToSquare(kingBitboard), turncolor ^ TurnColor.Black);
         }
@@ -439,36 +413,29 @@ namespace ChessEngine {
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSquareAttackedByColor(Square square, TurnColor turnColor) {
             int squareIndex = (int)square;
-            //Logger.Log(Channel.Debug, $"Checking if square {square} is attacked by {turnColor}");
 
             // Check pawn attacks
             Bitboard pawns = Position[(int)turnColor, (int)PieceType.Pawn];
             if ((Pawn.PawnAttackMasks[(int)turnColor ^ 1, squareIndex] & pawns) != 0) {
-                //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} pawn");
                 return true;
             }
 
             // Check knight attacks
             Bitboard knights = Position[(int)turnColor, (int)PieceType.Knight];
             if ((Knight.KnightAttackMasks[squareIndex] & knights) != 0) {
-                //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} knight");
                 return true;
             }
 
             // Check king attacks
             Bitboard king = Position[(int)turnColor, (int)PieceType.King];
             if ((King.KingAttackMasks[squareIndex] & king) != 0) {
-                //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} king");
                 return true;
             }
 
             // Check bishop and queen attacks (diagonal)
-            //Logger.Log(Channel.Debug, StringHelper.FormatAsChessboard(Bishop.ComputePossibleMoves(BitOperations.ToBitboard(square), this, turnColor)));
             Bitboard bishopsQueens = Position[(int)turnColor, (int)PieceType.Queen] |
                                      Position[(int)turnColor, (int)PieceType.Bishop];
-            //Logger.Log(Channel.Debug, StringHelper.FormatAsChessboard(bishopsQueens));
             if ((Bishop.ComputePossibleMoves(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & bishopsQueens) != 0) {
-                //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} bishopQueen");
                 return true;
             }
 
@@ -476,23 +443,18 @@ namespace ChessEngine {
             Bitboard rooksQueens = Position[(int)turnColor, (int)PieceType.Queen] |
                                    Position[(int)turnColor, (int)PieceType.Rook];
             if ((Rook.ComputePossibleMoves(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & rooksQueens) != 0) {
-                //Logger.Log(Channel.Debug, $"Square {square} is attacked by {turnColor} bishopQueen");
                 return true;
             }
 
-            //Logger.Log(Channel.Debug, $"Square {square} is not attacked by {turnColor}");
             return false;
         }
 
         public bool AreAnySquaresAttackedByColor(Square[] squares, TurnColor turnColor) {
-            Stopwatch stopwatch = Stopwatch.StartNew();
             foreach (var square in squares) {
                 if (IsSquareAttackedByColor(square, turnColor)) {
                     return true;
                 }
             }
-            stopwatch.Stop();
-            //Logger.Log(Channel.Benchmark, $"AreAnySquaresAttackedByColor {squares.Length} squares checked in {stopwatch.ElapsedTicks} ns");
             return false;
         }
 
@@ -502,7 +464,7 @@ namespace ChessEngine {
         }
 
         public ulong Perft(int depth) {
-            return DrawPerftTree(depth, indent: "");
+            //return DrawPerftTree(depth, indent: "");
 
             if (depth == 0)
                 return 1UL;
@@ -510,29 +472,13 @@ namespace ChessEngine {
             ulong nodes = 0;
 
             List<Move> allPseudoLegalMoves = GenerateMoves(); // 3000 ns
-            //stopwatch.Stop();
-            //Logger.Log(Channel.Benchmark, $"GenerateMoves {allPseudoLegalMoves.Count} pseudo legal moves in {stopwatch.ElapsedTicks} ns");
             foreach (var move in CollectionsMarshal.AsSpan(allPseudoLegalMoves)) {  // 7500 ns
-                Stopwatch stopwatch = Stopwatch.StartNew();
                 Move.MakeMove(this, move);
                 if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
                     nodes += Perft(depth - 1);
                 }
                 Move.UnmakeMove(this, move);
-                stopwatch.Stop();
-                Logger.Log(Channel.Benchmark, $"Move/ischeck/unmake {move} in {stopwatch.ElapsedTicks} ns");
             }
-            //stopwatch.Stop();
-            //Logger.Log(Channel.Benchmark, $"Perft {allPseudoLegalMoves.Count} pseudo legal moves in {stopwatch.ElapsedTicks} ns");
-
-            /*for (i = 0; i < nMoves; i++) {
-                Move.MakeMove(this, allPseudoLegalMoves[i]);
-                bool isInCheckPerft = IsInCheck(stateStack[plyIndex].TurnColor);
-                if (!isInCheckPerft) {
-                    nodes += Perft(depth - 1);
-                }
-                Move.UnmakeMove(this, allPseudoLegalMoves[i]);
-            }*/
 
             return nodes;
         }

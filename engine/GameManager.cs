@@ -65,15 +65,15 @@ namespace ChessEngine {
                     Move move = allLegalMoves[r];
 
                     Move.MakeMove(chessboard, move);
-                    Logger.Log(Channel.Game, $"Playing {move.ToString().ToLower()}");
-                    Logger.Log(Channel.Game, chessboard.ToString());
+                    //Logger.Log(Channel.Game, $"Playing {move.ToString().ToLower()}");
+                    //Logger.Log(Channel.Game, chessboard.ToString());
 
-                    Logger.Log(Channel.Game, "new finished (stack):");
-                    Logger.Log(Channel.Game, chessboard.State);
+                    //Logger.Log(Channel.Game, "new finished (stack):");
+                    //Logger.Log(Channel.Game, chessboard.State);
 
-                    Logger.Log(Channel.Game, "-------------------------------------------------");
-                    Logger.Log(Channel.Game, "preview of next turn state (unfinished)");
-                    Logger.Log(Channel.Game, chessboard.State);
+                    //Logger.Log(Channel.Game, "-------------------------------------------------");
+                    //Logger.Log(Channel.Game, "preview of next turn state (unfinished)");
+                    //Logger.Log(Channel.Game, chessboard.State);
 
                     Console.WriteLine($"bestmove {move.ToString().ToLower()}");
                 }

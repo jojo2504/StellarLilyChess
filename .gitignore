@@ -7,3 +7,6 @@ pyutils
 BitboardChessConverter.py
 
 .vscode
+
+**/*.nettrace
+**/*.nettrace.*

@@ -4,7 +4,13 @@ namespace ChessEngine {
     class Program {
         static void Main(string[] args) {
             // This is the entry point of the application for the perftree tests.
-            if (args.Length > 0 && args.Length < 3) {
+            if (args.Length == 0) {
+                Chessboard chessboard = new();
+                chessboard.Perft(5);
+                Console.WriteLine("Perft completed for depth 5");
+            }
+
+            else if (args.Length > 0 && args.Length < 3) {
                 var depth = int.Parse(args[0]);
                 var fen = args[1];
                 //var moves = ulong.Parse(args[2]); // Ignore this value, it's not used in the current context

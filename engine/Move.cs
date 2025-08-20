@@ -199,8 +199,6 @@ namespace ChessEngine {
         }
 
         public static Move DecodeUciMove(Chessboard chessboard, string uciMove) {
-            Stopwatch stopwatch = Stopwatch.StartNew();
-
             char? promotionChar = null;
             if (uciMove.Length == 5) promotionChar = uciMove[^1];
 
@@ -215,15 +213,10 @@ namespace ChessEngine {
             // Determine the special move code
             word |= FindSpecialMoveCode(fromBitboard, toBitboard, chessboard, promotionChar);
 
-            stopwatch.Stop();
-            //Logger.Log(Channel.Benchmark, $"decoding uci {uciMove} in {stopwatch.Elapsed.TotalNanoseconds}ns");
-
             return new Move(word);
         }
 
         public static void MakeMove(Chessboard chessboard, Move move) {
-            //Stopwatch stopwatch = Stopwatch.StartNew();
-
             var bitboardFrom = move.FromBitboard();
             var bitboardTo = move.ToBitboard();
 
@@ -412,13 +405,9 @@ namespace ChessEngine {
             }
             
             chessboard.State.TurnColor ^= TurnColor.Black; // toggle color
-            //Logger.Log(Channel.Debug, "finished making move");
-            //stopwatch.Stop();
-            //Logger.Log(Channel.Benchmark, $"making move {move} in {stopwatch.ElapsedTicks} ns");
         }
 
         public static void UnmakeMove(Chessboard chessboard, Move move) {
-            //Stopwatch stopwatch = Stopwatch.StartNew();
             var bitboardFrom = move.FromBitboard();
             var bitboardTo = move.ToBitboard();
             
@@ -476,7 +465,6 @@ namespace ChessEngine {
             }
 
             else {
-                //Logger.Log(Channel.Benchmark, $"before unmaking move {move} in {stopwatch.Elapsed.TotalNanoseconds}ns");
                 // restore last moved piece from latestState
                 for (int pieceTypeIndex = 0; pieceTypeIndex < chessboard.Position.GetLength(1); pieceTypeIndex++) {
                     ref var piece = ref chessboard.Position[(int)chessboard.State.TurnColor, pieceTypeIndex];
@@ -489,10 +477,7 @@ namespace ChessEngine {
                     UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor ^ 1, (int)chessboard.State.CapturedPiece], bitboardTo, chessboard, chessboard.State.TurnColor ^ TurnColor.Black);
                 }
             }
-
             //Logger.Log(Channel.Debug, "plyIndex after unmaking move:", chessboard.plyIndex);
-
-            //Logger.Log(Channel.Benchmark, $"unmaking move {move} in {stopwatch.ElapsedTicks} ns");
         }
 
         public override bool Equals(object obj) {
