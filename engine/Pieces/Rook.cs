@@ -42,7 +42,7 @@ namespace ChessEngine.Pieces {
             rookBlockerMask[i] = blockerMask;
         }
 
-        static Bitboard Ratt(int square, Bitboard block) {
+        public static Bitboard Ratt(int square, Bitboard block) {
             Bitboard result = 0UL;
             int rk = square / 8, fl = square % 8;
             int r, f;

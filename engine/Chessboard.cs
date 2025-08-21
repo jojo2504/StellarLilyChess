@@ -401,27 +401,27 @@ namespace ChessEngine {
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public bool IsSquareAttackedByColor(Square square, TurnColor turnColor) {
             int squareIndex = (int)square;
-            var squareBitboard = BitOperations.ToBitboard(square);
-            var opponantColor = turnColor ^ TurnColor.Black;
             var colorIndex = (int)turnColor;
 
-            // Check bishop and queen attacks (diagonal)
-            Bitboard bishopsQueens = Position[colorIndex, (int)PieceType.Queen] |
-                                     Position[colorIndex, (int)PieceType.Bishop];
-            if ((Bishop.ComputePossibleAttacks(squareBitboard, this, opponantColor) & bishopsQueens) != 0) {
+            // Check knight attacks
+            Bitboard knights = Position[colorIndex, (int)PieceType.Knight];
+            if ((Knight.KnightAttackMasks[squareIndex] & knights) != 0) {
                 return true;
             }
 
             // Check rook and queen attacks (straight lines)
             Bitboard rooksQueens = Position[colorIndex, (int)PieceType.Queen] |
                                    Position[colorIndex, (int)PieceType.Rook];
-            if ((Rook.ComputePossibleAttacks(squareBitboard, this, opponantColor) & rooksQueens) != 0) {
+            if (((SuperPiece.RookAttacks[squareIndex] & rooksQueens) != 0)
+                && (Rook.ComputePossibleAttacks(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & rooksQueens) != 0) {
                 return true;
             }
 
-            // Check knight attacks
-            Bitboard knights = Position[colorIndex, (int)PieceType.Knight];
-            if ((Knight.KnightAttackMasks[squareIndex] & knights) != 0) {
+            Bitboard bishopsQueens = Position[colorIndex, (int)PieceType.Queen] |
+                                    Position[colorIndex, (int)PieceType.Bishop];
+            // Check bishop and queen attacks (diagonal)
+            if (((SuperPiece.BishopAttacks[squareIndex] & bishopsQueens) != 0)
+                && ((Bishop.ComputePossibleAttacks(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & bishopsQueens) != 0)) {
                 return true;
             }
 

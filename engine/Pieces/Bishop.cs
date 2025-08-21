@@ -24,7 +24,7 @@ namespace ChessEngine.Pieces {
             return result;
         }
 
-        static Bitboard Batt(int square, Bitboard block) {
+        public static Bitboard Batt(int square, Bitboard block) {
             Bitboard result = 0UL;
             int rk = square / 8, fl = square % 8, r, f;
             for (r = rk + 1, f = fl + 1; r <= 7 && f <= 7; r++, f++) {
