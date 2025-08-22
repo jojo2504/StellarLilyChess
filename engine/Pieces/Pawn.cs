@@ -16,17 +16,17 @@ namespace ChessEngine.Pieces {
 
         // Precomputed promotion special codes
         public static readonly SpecialMovesCode[] QuietPromotions = {
-            SpecialMovesCode.QueenPromotion,
-            SpecialMovesCode.RookPromotion,
+            SpecialMovesCode.KnightPromotion,
             SpecialMovesCode.BishopPromotion,
-            SpecialMovesCode.KnightPromotion
+            SpecialMovesCode.RookPromotion,
+            SpecialMovesCode.QueenPromotion
         };
 
         public static readonly SpecialMovesCode[] CapturePromotions = {
-            SpecialMovesCode.QueenPromotionCapture,  // Queen
-            SpecialMovesCode.RookPromotionCapture,  // Rook
-            SpecialMovesCode.BishopPromotionCapture,  // Bishop  
-            SpecialMovesCode.KnightPromotionCapture   // Knight
+            SpecialMovesCode.KnightPromotionCapture,
+            SpecialMovesCode.BishopPromotionCapture,
+            SpecialMovesCode.RookPromotionCapture,
+            SpecialMovesCode.QueenPromotionCapture
         };
 
         static Pawn() {

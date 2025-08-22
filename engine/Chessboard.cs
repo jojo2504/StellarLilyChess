@@ -37,9 +37,9 @@ namespace ChessEngine {
 
     public enum PieceType {
         Pawn,
-        Rook,
         Knight,
         Bishop,
+        Rook,
         Queen,
         King
     }
@@ -87,77 +87,40 @@ namespace ChessEngine {
         void ParseFEN(string fen) {
             var pieceSetters = new Dictionary<char, Action<int>> {
                 { 'P', idx => {
-                    var changes = 1UL << idx;
-                    WhitePawns |= changes;
-                    AllWhitePieces |= changes;
-                    AllPieces |= changes;
-                    }
-                },
+                    UpdatePieceBitboard(ref WhitePawns, 1UL << idx, this, TurnColor.White, PieceType.Pawn);
+                }},
                 { 'N', idx => {
-                    var changes = 1UL << idx;
-                    WhiteKnights |= changes;
-                    AllWhitePieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref WhiteKnights, 1UL << idx, this, TurnColor.White, PieceType.Knight);
                 }},
                 { 'B', idx => {
-                    var changes = 1UL << idx;
-                    WhiteBishops |= changes;
-                    AllWhitePieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref WhiteBishops, 1UL << idx, this, TurnColor.White, PieceType.Bishop);
                 }},
                 { 'R', idx => {
-                    var changes = 1UL << idx;
-                    WhiteRooks |= changes;
-                    AllWhitePieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref WhiteRooks, 1UL << idx, this, TurnColor.White, PieceType.Rook);
                 }},
                 { 'Q', idx => {
-                    var changes = 1UL << idx;
-                    WhiteQueens |= changes;
-                    AllWhitePieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref WhiteQueens, 1UL << idx, this, TurnColor.White, PieceType.Queen);
                 }},
                 { 'K', idx => {
-                    var changes = 1UL << idx;
-                    WhiteKing |= changes;
-                    AllWhitePieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref WhiteKing, 1UL << idx, this, TurnColor.White, PieceType.King);
                 }},
                 { 'p', idx => {
-                    var changes = 1UL << idx;
-                    BlackPawns |= changes;
-                    AllBlackPieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref BlackPawns, 1UL << idx, this, TurnColor.Black, PieceType.Pawn);
                 }},
                 { 'n', idx => {
-                    var changes = 1UL << idx;
-                    BlackKnights |= changes;
-                    AllBlackPieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref BlackKnights, 1UL << idx, this, TurnColor.Black, PieceType.Knight);
                 }},
                 { 'b', idx => {
-                    var changes = 1UL << idx;
-                    BlackBishops |= changes;
-                    AllBlackPieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref BlackBishops, 1UL << idx, this, TurnColor.Black, PieceType.Bishop);
                 }},
                 { 'r', idx => {
-                    var changes = 1UL << idx;
-                    BlackRooks |= changes;
-                    AllBlackPieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref BlackRooks, 1UL << idx, this, TurnColor.Black, PieceType.Rook);
                 }},
                 { 'q', idx => {
-                    var changes = 1UL << idx;
-                    BlackQueens |= changes;
-                    AllBlackPieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref BlackQueens, 1UL << idx, this, TurnColor.Black, PieceType.Queen);
                 }},
                 { 'k', idx => {
-                    var changes = 1UL << idx;
-                    BlackKing |= changes;
-                    AllBlackPieces |= changes;
-                    AllPieces |= changes;
+                    UpdatePieceBitboard(ref BlackKing, 1UL << idx, this, TurnColor.Black, PieceType.King);
                 }},
             };
 
@@ -167,8 +130,8 @@ namespace ChessEngine {
             var turnColor = parts[1];
             var castlingAbility = parts[2];
             var epSquare = parts[3].ToUpper();
-            var halfMove = parts[4];
-            var FullMove = parts[5];
+            var halfMove = int.TryParse(parts[4], out var halfMoveValue) ? halfMoveValue : 0;
+            var fullMove = int.TryParse(parts[5], out var fullMoveValue) ? fullMoveValue : 0;
 
             // init state
             if (turnColor == "w") State.TurnColor = TurnColor.White;
@@ -194,14 +157,19 @@ namespace ChessEngine {
                         break;
                 }
             }
+            State.ZobristHashKey ^= ZobristHashing.ComputeCastlingRightsHash(in State);
 
-            if (Enum.TryParse<Square>(epSquare, out var square))
+            if (Enum.TryParse<Square>(epSquare, out var square)) {
                 State.EnPassantSquare = square;
-            else
+                int epFile = (int)square % 8;
+                State.ZobristHashKey ^= ZobristHashing.enPassantFile[epFile];
+            }
+            else {
                 State.EnPassantSquare = null;
+            }
 
             State.HalfMoveClock = Convert.ToInt32(halfMove);
-            State.FullMoveNumber = Convert.ToInt32(FullMove);
+            State.FullMoveNumber = Convert.ToInt32(fullMove);
 
             var ranks = piecePlacement.Split("/");
             var overallIndexSquare = 0;
@@ -237,45 +205,64 @@ namespace ChessEngine {
             return StringHelper.FormatAsChessboard(ChessBoardState.Replace('0', '.'));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool ShouldCheckCastling() {
             // Quick checks before expensive castling computation
             return (State.TurnColor == TurnColor.White && (State.CanWhiteKingCastle || State.CanWhiteQueenCastle))
                 || (State.TurnColor == TurnColor.Black && (State.CanBlackKingCastle || State.CanBlackQueenCastle));
         }
 
-        private void AddAllPossibleMoves(Bitboard fromBitboard, Bitboard possibleMoves, Span<Move> allPseudoLegalMoves, PieceType pieceType, ref int moveCount) {
+        private void AddAllPossibleMovesKing(Bitboard fromBitboard, Bitboard possibleMoves, Span<Move> allPseudoLegalMoves, PieceType pieceType, ref int moveCount) {
+            var fromBitboardIndex = BitOperations.ToIndex(fromBitboard);  // Compute once
+            var from = fromBitboardIndex << 10;
+
             while (possibleMoves != 0) {
                 var toBitboard = BitOperations.LsbIndexBitboard(possibleMoves);
                 BitOperations.del_1st_bit(ref possibleMoves);
-                //possibleMoves ^= toBitboard;  // Remove the first bit
 
-                var move = new Move(from: fromBitboard, to: toBitboard, chessboard: this, pieceType: pieceType);
+                var toBitboardIndex = BitOperations.ToIndex(toBitboard);
+                ushort word = (ushort)(from | (toBitboardIndex << 4));
+                if (Math.Abs(fromBitboardIndex - toBitboardIndex) == 2) {
+                    if (toBitboard == BitOperations.ToBitboard(Square.C1) || toBitboard == BitOperations.ToBitboard(Square.C8)) {
+                        word |= (byte)SpecialMovesCode.QueenCastle;
+                    }
+                    else if (toBitboard == BitOperations.ToBitboard(Square.G1) || toBitboard == BitOperations.ToBitboard(Square.G8)) {
+                        word |= (byte)SpecialMovesCode.KingCastle;
+                    }
+                }
+
+                else if ((toBitboard & AllPieces) != 0) {
+                    word |= (ushort)SpecialMovesCode.Captures;
+                }
+
+                var move = new Move(word: word, pieceType: pieceType);
                 allPseudoLegalMoves[moveCount++] = move;
             }
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)] not good for performance
         private void AddAllPossibleMovesPawn(Bitboard fromBitboard, Bitboard possibleMoves, Span<Move> allPseudoLegalMoves, ref int moveCount) {
-            int fromIndex = BitOperations.ToIndex(fromBitboard);  // Compute once
+            int fromBitboardIndex = BitOperations.ToIndex(fromBitboard);  // Compute once
+            var from = fromBitboardIndex << 10;
 
             while (possibleMoves != 0) {
                 int toIndex = BitOperations.ToIndex(possibleMoves);
                 BitOperations.del_1st_bit(ref possibleMoves);
 
+                ushort word = (ushort)(from | (toIndex << 4));
                 // Promotion moves
                 if (toIndex < 8 || toIndex >= 56) {
                     bool isCapture = ((1UL << toIndex) & AllPieces) != 0;
                     var promotionArray = isCapture ? Pawn.CapturePromotions : Pawn.QuietPromotions;
 
                     foreach (var promotionCode in promotionArray) {
-                        ushort moveWord = (ushort)((fromIndex << 10) | (toIndex << 4) | (int)promotionCode);
-                        allPseudoLegalMoves[moveCount++] = new Move(moveWord, PieceType.Pawn);
+                        allPseudoLegalMoves[moveCount++] = new Move((ushort)(word | (byte)promotionCode), PieceType.Pawn);
                     }
                 }
                 else {
                     // Regular pawn moves - determine special code DIRECTLY
                     bool isCapture = ((1UL << toIndex) & AllPieces) != 0;
-                    int distance = Math.Abs(fromIndex - toIndex);
+                    int distance = Math.Abs(fromBitboardIndex - toIndex);
 
                     SpecialMovesCode specialCode;
                     if (isCapture) {
@@ -284,7 +271,7 @@ namespace ChessEngine {
                     else if (distance == 16) {
                         specialCode = SpecialMovesCode.DoublePawnPush;
                     }
-                    else if ((distance == 7 || distance == 9)) {
+                    else if (distance == 7 || distance == 9) {
                         specialCode = SpecialMovesCode.EpCapture;
                     }
                     else {
@@ -292,9 +279,27 @@ namespace ChessEngine {
                     }
 
                     // Create move directly without calling FindSpecialMoveCode
-                    ushort moveWord = (ushort)((fromIndex << 10) | (toIndex << 4) | (int)specialCode);
-                    allPseudoLegalMoves[moveCount++] = new Move(moveWord, PieceType.Pawn);
+                    word |= (byte)specialCode;
+                    allPseudoLegalMoves[moveCount++] = new Move(word, PieceType.Pawn);
                 }
+            }
+        }
+
+        private void AddAllPossibleMoves(Bitboard fromBitboard, Bitboard possibleMoves, Span<Move> allPseudoLegalMoves, PieceType pieceType,ref int moveCount) {
+            int fromBitboardIndex = BitOperations.ToIndex(fromBitboard);  // Compute once
+            var from = fromBitboardIndex << 10;
+
+            while (possibleMoves != 0) {
+                var toBitboard = BitOperations.LsbIndexBitboard(possibleMoves);
+                BitOperations.del_1st_bit(ref possibleMoves);
+
+                ushort word = (ushort)(from | (BitOperations.ToIndex(toBitboard) << 4));
+                if ((toBitboard & AllPieces) != 0) {
+                    word |= (ushort)SpecialMovesCode.Captures;
+                }
+
+                var move = new Move(word, pieceType: pieceType);
+                allPseudoLegalMoves[moveCount++] = move;
             }
         }
 
@@ -367,7 +372,7 @@ namespace ChessEngine {
                         possibleMoves |= King.ComputePossibleCastlingMoves(pieceBitboard, this, (TurnColor)colorIndex);
                     }
 
-                    AddAllPossibleMoves(pieceBitboard, possibleMoves, allPseudoLegalMoves, PieceType.King, ref moveCount);
+                    AddAllPossibleMovesKing(pieceBitboard, possibleMoves, allPseudoLegalMoves, PieceType.King, ref moveCount);
 
                     break;
             }
@@ -395,12 +400,12 @@ namespace ChessEngine {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsInCheck(TurnColor turncolor) {
             var kingBitboard = Position[(int)turncolor, (int)PieceType.King];
-            return IsSquareAttackedByColor(BitOperations.ToSquare(kingBitboard), turncolor ^ TurnColor.Black);
+            return IsSquareAttackedByColor(in kingBitboard, turncolor ^ TurnColor.Black);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public bool IsSquareAttackedByColor(Square square, TurnColor turnColor) {
-            int squareIndex = (int)square;
+        public bool IsSquareAttackedByColor(in Bitboard square, TurnColor turnColor) {
+            int squareIndex = BitOperations.ToIndex(square);
             var colorIndex = (int)turnColor;
 
             // Check knight attacks
@@ -413,7 +418,7 @@ namespace ChessEngine {
             Bitboard rooksQueens = Position[colorIndex, (int)PieceType.Queen] |
                                    Position[colorIndex, (int)PieceType.Rook];
             if (((SuperPiece.RookAttacks[squareIndex] & rooksQueens) != 0)
-                && (Rook.ComputePossibleAttacks(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & rooksQueens) != 0) {
+                && (Rook.ComputePossibleAttacks(square, this, turnColor ^ TurnColor.Black) & rooksQueens) != 0) {
                 return true;
             }
 
@@ -421,7 +426,7 @@ namespace ChessEngine {
                                     Position[colorIndex, (int)PieceType.Bishop];
             // Check bishop and queen attacks (diagonal)
             if (((SuperPiece.BishopAttacks[squareIndex] & bishopsQueens) != 0)
-                && ((Bishop.ComputePossibleAttacks(BitOperations.ToBitboard(square), this, turnColor ^ TurnColor.Black) & bishopsQueens) != 0)) {
+                && ((Bishop.ComputePossibleAttacks(square, this, turnColor ^ TurnColor.Black) & bishopsQueens) != 0)) {
                 return true;
             }
 
@@ -443,7 +448,7 @@ namespace ChessEngine {
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AreAnySquaresAttackedByColor(Square[] squares, TurnColor turnColor) {
             foreach (var square in squares) {
-                if (IsSquareAttackedByColor(square, turnColor)) {
+                if (IsSquareAttackedByColor(BitOperations.ToBitboard(square), turnColor)) {
                     return true;
                 }
             }
@@ -470,12 +475,12 @@ namespace ChessEngine {
             if (depth == 0)
                 return 1UL;
 
-            Span<Move> allPseudoLegalMoves = stackalloc Move[256];
+            Span<Move> allPseudoLegalMoves = stackalloc Move[218];
             ulong nodes = 0;
             int n_moves, i;
 
             n_moves = GenerateMoves(allPseudoLegalMoves);
-            for (i = 0; i < n_moves; i++) { 
+            for (i = 0; i < n_moves; i++) {
                 MakeMove(this, allPseudoLegalMoves[i]);
                 if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
                     nodes += Perft(depth - 1);
@@ -497,7 +502,7 @@ namespace ChessEngine {
             int n_moves, i;
 
             n_moves = GenerateMoves(allPseudoLegalMoves);
-            for (i = 0; i < n_moves; i++) { 
+            for (i = 0; i < n_moves; i++) {
                 var move = allPseudoLegalMoves[i];
                 bool isLastMove = (i == allPseudoLegalMoves.Length - 1);
                 string branch = isLastMove ? "└─" : "├─";

@@ -96,13 +96,9 @@ namespace ChessEngine.Utils {
             return bitboard & (0UL - bitboard);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Square ToSquare(Bitboard bitboard) {
-            var zeroCount = System.Numerics.BitOperations.TrailingZeroCount(bitboard);
-            if (zeroCount < 0 || zeroCount > 63) {
-                Logger.Warning(Channel.Debug, "bitboard value should not be 0UL");
-                return (Square)64;
-            }
-            return (Square)zeroCount;
+            return (Square)System.Numerics.BitOperations.TrailingZeroCount(bitboard);
         }
     }
 }
