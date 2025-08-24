@@ -34,7 +34,6 @@ namespace ChessEngine {
         // 14    | F  | T  | T  | T  | 1110
         // 15    | T  | T  | T  | T  | 1111
         public static readonly ulong[] castlingRights = new ulong[16];   // all combinations
-
         public static readonly ulong[] enPassantFile = new ulong[8];     // files a-h
         public static readonly ulong sideToMove;                         // single value
 

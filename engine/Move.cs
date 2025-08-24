@@ -80,9 +80,11 @@ namespace ChessEngine {
             ref Bitboard colorPieces = ref ((turnColor == TurnColor.White) ?
                 ref chessboard.AllWhitePieces : ref chessboard.AllBlackPieces);
             colorPieces ^= from ^ to;
-            chessboard.AllPieces ^= from ^ to;
-            //chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, BitOperations.ToIndex(from))];
-            //chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, BitOperations.ToIndex(to))];
+
+            var fromIndex = BitOperations.ToIndex(from);
+            var index = ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, fromIndex);
+            chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[index];
+            chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[index - (fromIndex - BitOperations.ToIndex(to))];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -91,8 +93,7 @@ namespace ChessEngine {
             ref Bitboard colorPieces = ref ((turnColor == TurnColor.White) ?
                 ref chessboard.AllWhitePieces : ref chessboard.AllBlackPieces);
             colorPieces ^= square;
-            chessboard.AllPieces ^= square;
-            //chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, BitOperations.ToIndex(square))];
+            chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, BitOperations.ToIndex(square))];
         }
 
         /// <summary>

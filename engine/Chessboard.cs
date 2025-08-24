@@ -64,7 +64,7 @@ namespace ChessEngine {
         public Bitboard[,] Position = new Bitboard[2, 6];
         public Bitboard AllWhitePieces = 0UL;
         public Bitboard AllBlackPieces = 0UL;
-        public Bitboard AllPieces = 0UL;
+        public Bitboard AllPieces => AllWhitePieces | AllBlackPieces;
 
         public State State = new();
         public const ushort MaxPly = 256;
@@ -273,7 +273,8 @@ namespace ChessEngine {
                 else {
                     // Regular pawn moves - determine special code DIRECTLY
                     bool isCapture = ((1UL << toIndex) & AllPieces) != 0;
-                    int distance = Math.Abs(fromBitboardIndex - toIndex);
+                    int distance = fromBitboardIndex - toIndex;
+                    distance = (distance + (distance >> 31)) ^ (distance >> 31);
 
                     SpecialMovesCode specialCode;
                     if (isCapture) {
