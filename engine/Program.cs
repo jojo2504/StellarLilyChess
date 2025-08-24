@@ -3,13 +3,14 @@ using ChessEngine.Utils.Logging;
 namespace ChessEngine {
     class Program {
         static void Main(string[] args) {
-            // This is the entry point of the application for the perftree tests.
+            // dotnet-trace entry
             if (args.Length == 0) {
                 Chessboard chessboard = new();
                 chessboard.Perft(5);
                 Console.WriteLine("Perft completed for depth 5");
             }
 
+            // This is the entry point of the application for the perftree tests 
             else if (args.Length > 0 && args.Length < 3) {
                 var depth = int.Parse(args[0]);
                 var fen = args[1];

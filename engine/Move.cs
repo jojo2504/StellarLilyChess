@@ -182,7 +182,8 @@ namespace ChessEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void MakeMove(Chessboard chessboard, Move move) {
+        public static void MakeMove(Chessboard chessboard, in Move move) {
+            //Stopwatch stopwatch = Stopwatch.StartNew();
             // precheck castling
             if (move.CASTLE_FLAG) {
                 chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
@@ -274,6 +275,9 @@ namespace ChessEngine {
                         UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, move.pieceType); // move piece
                     }
                     chessboard.State.CapturedPiece = null;
+
+                    //stopwatch.Stop();
+                    //Logger.Log(Channel.Debug, "MakeMove time:", stopwatch.ElapsedTicks, "ns");
                 }
                 // capture
                 else {
@@ -316,6 +320,7 @@ namespace ChessEngine {
                 //push the current state of the position onto the stack
                 chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
 
+
                 if (chessboard.State.CapturedPiece.HasValue || move.pieceType == PieceType.Pawn) {
                     chessboard.State.HalfMoveClock = 0;
                 }
@@ -323,10 +328,17 @@ namespace ChessEngine {
                     chessboard.State.HalfMoveClock++;
                 }
 
-                chessboard.State.CanWhiteQueenCastle &= (chessboard.WhiteRooks & King.CastlingRookMasks[0]) != 0;
-                chessboard.State.CanWhiteKingCastle &= (chessboard.WhiteRooks & King.CastlingRookMasks[1]) != 0;
-                chessboard.State.CanBlackQueenCastle &= (chessboard.BlackRooks & King.CastlingRookMasks[2]) != 0;
-                chessboard.State.CanBlackKingCastle &= (chessboard.BlackRooks & King.CastlingRookMasks[3]) != 0;
+                // Single batch check
+                ulong whiteCheck = chessboard.WhiteRooks & Rook.WHITE_CASTLING_MASK;
+                ulong blackCheck = chessboard.BlackRooks & Rook.BLACK_CASTLING_MASK;
+
+                chessboard.State.CanWhiteKingCastle &= (whiteCheck & (Bitboard)BSquare.H1) != 0;
+                chessboard.State.CanWhiteQueenCastle &= (whiteCheck & (Bitboard)BSquare.A1) != 0;
+                chessboard.State.CanBlackKingCastle &= (blackCheck & (Bitboard)BSquare.H8) != 0;
+                chessboard.State.CanBlackQueenCastle &= (blackCheck & (Bitboard)BSquare.A8) != 0;
+
+                //stopwatch.Stop();
+                //Logger.Log(Channel.Debug, "MakeMove time:", stopwatch.ElapsedTicks, "ns");
 
                 // reset en passant square
                 chessboard.State.EnPassantSquare = null;
@@ -361,10 +373,13 @@ namespace ChessEngine {
             //chessboard.State.ZobristHashKey ^= ZobristHashing.sideToMove;
             //chessboard.State.ZobristHashKey ^= ZobristHashing.ComputeCastlingRightsHash(in chessboard.State);
             chessboard.State.TurnColor ^= TurnColor.Black; // toggle color
+
+            //stopwatch.Stop();
+            //Logger.Log(Channel.Debug, "MakeMove time:", stopwatch.ElapsedTicks, "ns");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void UnmakeMove(Chessboard chessboard, Move move) {
+        public static void UnmakeMove(Chessboard chessboard, in Move move) {
             //restore the previous state before latest move pushed move, the latest state provide the turn to play,
             ref var latestState = ref chessboard.stateStack[chessboard.plyIndex--]; // pop the latest move form the stack then decrement
             chessboard.State = latestState;

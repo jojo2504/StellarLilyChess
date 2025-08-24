@@ -10,6 +10,8 @@ namespace ChessEngine.Pieces {
         static readonly Bitboard[] rookBlockerMask = new Bitboard[64];
         static readonly Magic.SMagic[] RookMagicTable = new Magic.SMagic[64];
         static readonly Bitboard[,] MagicRookAttacks = new Bitboard[64, 4096]; // 2048K
+        public const Bitboard WHITE_CASTLING_MASK = 0x81UL;  // A1 | H1
+        public const Bitboard BLACK_CASTLING_MASK = 0x8100000000000000UL; // A8 | H8
 
         static Rook() {
             for (int i = 0; i < 64; i++) {

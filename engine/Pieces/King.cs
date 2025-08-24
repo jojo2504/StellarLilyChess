@@ -8,13 +8,6 @@ namespace ChessEngine.Pieces {
     public static class King {
         public static Bitboard[] KingAttackMasks = new Bitboard[64];
 
-        public static readonly ulong[] CastlingRookMasks = [
-            1UL << (int)Square.A1,  // White Queen
-            1UL << (int)Square.H1,  // White King  
-            1UL << (int)Square.A8,  // Black Queen
-            1UL << (int)Square.H8   // Black King
-        ];
-
         // Precomputed constants - no array allocation!
         private static class CastlingMasks {
             public static readonly Square[] WhiteKingSideAttack = [Square.E1, Square.F1, Square.G1];
