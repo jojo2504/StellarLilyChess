@@ -62,7 +62,7 @@ namespace ChessEngine.Pieces {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Bitboard ComputePossibleAttacks(Bitboard kingLocation, Chessboard chessboard, TurnColor? turnColor = null) {
+        public static Bitboard ComputePossibleAttacks(Bitboard kingLocation, in Chessboard chessboard, TurnColor? turnColor = null) {
             Bitboard kingMoves = KingAttackMasks[BitOperations.ToIndex(kingLocation)];
             var ownSide = ((turnColor ?? chessboard.State.TurnColor) == TurnColor.White) ? chessboard.AllWhitePieces : chessboard.AllBlackPieces;
             return kingMoves & ~ownSide;

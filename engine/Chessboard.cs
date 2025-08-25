@@ -297,7 +297,7 @@ namespace ChessEngine {
             }
         }
 
-        private void AddAllPossibleMoves(Bitboard fromBitboard, Bitboard possibleMoves, Span<Move> allPseudoLegalMoves, PieceType pieceType,ref int moveCount) {
+        private void AddAllPossibleMoves(Bitboard fromBitboard, Bitboard possibleMoves, Span<Move> allPseudoLegalMoves, PieceType pieceType, ref int moveCount) {
             int fromBitboardIndex = BitOperations.ToIndex(fromBitboard);  // Compute once
             var from = fromBitboardIndex << 10;
 
@@ -312,81 +312,6 @@ namespace ChessEngine {
 
                 var move = new Move(word, pieceType: pieceType);
                 allPseudoLegalMoves[moveCount++] = move;
-            }
-        }
-
-        void GetAllPossiblePieceMoves(int colorIndex, int pieceTypeIndex, Span<Move> allPseudoLegalMoves, ref int moveCount) {
-
-            var pieceBitboard = Position[colorIndex, pieceTypeIndex];
-            Bitboard possibleMoves;
-
-            switch ((PieceType)pieceTypeIndex) {
-                case PieceType.Pawn:
-                    while (pieceBitboard != 0) {
-                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
-                        BitOperations.del_1st_bit(ref pieceBitboard);
-
-                        possibleMoves = Pawn.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
-                        AddAllPossibleMovesPawn(fromBitboard, possibleMoves, allPseudoLegalMoves, ref moveCount);
-                    }
-
-                    break;
-
-                case PieceType.Rook:
-                    while (pieceBitboard != 0) {
-                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
-                        BitOperations.del_1st_bit(ref pieceBitboard);
-
-                        possibleMoves = Rook.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
-                        AddAllPossibleMoves(fromBitboard, possibleMoves, allPseudoLegalMoves, PieceType.Rook, ref moveCount);
-                    }
-
-                    break;
-
-                case PieceType.Knight:
-                    while (pieceBitboard != 0) {
-                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
-                        BitOperations.del_1st_bit(ref pieceBitboard);
-
-                        possibleMoves = Knight.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
-                        AddAllPossibleMoves(fromBitboard, possibleMoves, allPseudoLegalMoves, PieceType.Knight, ref moveCount);
-                    }
-
-                    break;
-
-                case PieceType.Bishop:
-                    while (pieceBitboard != 0) {
-                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
-                        BitOperations.pop_1st_bit(ref pieceBitboard);
-
-                        possibleMoves = Bishop.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
-                        AddAllPossibleMoves(fromBitboard, possibleMoves, allPseudoLegalMoves, PieceType.Bishop, ref moveCount);
-                    }
-
-                    break;
-
-                case PieceType.Queen:
-                    while (pieceBitboard != 0) {
-                        var fromBitboard = BitOperations.LsbIndexBitboard(pieceBitboard);
-                        BitOperations.pop_1st_bit(ref pieceBitboard);
-
-                        possibleMoves = Queen.ComputePossibleMoves(fromBitboard, this, (TurnColor)colorIndex);
-                        AddAllPossibleMoves(fromBitboard, possibleMoves, allPseudoLegalMoves, PieceType.Queen, ref moveCount);
-                    }
-
-                    break;
-
-                case PieceType.King:
-                    possibleMoves = King.ComputePossibleAttacks(pieceBitboard, this, (TurnColor)colorIndex);
-
-                    // check if castling is possible
-                    if (ShouldCheckCastling()) {
-                        possibleMoves |= King.ComputePossibleCastlingMoves(pieceBitboard, this, (TurnColor)colorIndex);
-                    }
-
-                    AddAllPossibleMovesKing(pieceBitboard, possibleMoves, allPseudoLegalMoves, PieceType.King, ref moveCount);
-
-                    break;
             }
         }
 
@@ -450,39 +375,24 @@ namespace ChessEngine {
 
             // Check knight attacks
             Bitboard knights = Position[colorIndex, (int)PieceType.Knight];
-            if ((Knight.KnightAttackMasks[squareIndex] & knights) != 0) {
-                return true;
-            }
-
             // Check rook and queen attacks (straight lines)
             Bitboard rooksQueens = Position[colorIndex, (int)PieceType.Queen] |
                                    Position[colorIndex, (int)PieceType.Rook];
-            if (((SuperPiece.RookAttacks[squareIndex] & rooksQueens) != 0)
-                && (Rook.ComputePossibleAttacks(square, this, turnColor ^ TurnColor.Black) & rooksQueens) != 0) {
-                return true;
-            }
-
             Bitboard bishopsQueens = Position[colorIndex, (int)PieceType.Queen] |
                                     Position[colorIndex, (int)PieceType.Bishop];
-            // Check bishop and queen attacks (diagonal)
-            if (((SuperPiece.BishopAttacks[squareIndex] & bishopsQueens) != 0)
-                && ((Bishop.ComputePossibleAttacks(square, this, turnColor ^ TurnColor.Black) & bishopsQueens) != 0)) {
-                return true;
-            }
-
             // Check pawn attacks
             Bitboard pawns = Position[colorIndex, (int)PieceType.Pawn];
-            if ((Pawn.PawnAttackMasks[colorIndex ^ 1, squareIndex] & pawns) != 0) {
-                return true;
-            }
-
             // Check king attacks
             Bitboard king = Position[colorIndex, (int)PieceType.King];
-            if ((King.KingAttackMasks[squareIndex] & king) != 0) {
-                return true;
-            }
 
-            return false;
+            Bitboard attacks = 0UL;
+            attacks |= Knight.KnightAttackMasks[squareIndex] & knights;
+            attacks |= Rook.ComputePossibleAttacks(square, this, turnColor ^ TurnColor.Black) & rooksQueens;
+            attacks |= Bishop.ComputePossibleAttacks(square, this, turnColor ^ TurnColor.Black) & bishopsQueens;
+            attacks |= Pawn.PawnAttackMasks[(int)turnColor ^ 1, squareIndex] & pawns;
+            attacks |= King.KingAttackMasks[squareIndex] & king;
+
+            return attacks != 0UL;
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -503,12 +413,70 @@ namespace ChessEngine {
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         int GenerateMoves(Span<Move> allPseudoLegalMoves) {
             int moveCount = 0;
-            for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
-                GetAllPossiblePieceMoves((int)State.TurnColor, pieceTypeIndex, allPseudoLegalMoves, ref moveCount);
+            int colorIndex = (int)State.TurnColor;
+            TurnColor color = (TurnColor)colorIndex;
+
+            // --- Pawns ---
+            var pawns = Position[colorIndex, (int)PieceType.Pawn];
+            while (pawns != 0) {
+                var from = BitOperations.LsbIndexBitboard(pawns);
+                BitOperations.del_1st_bit(ref pawns);
+
+                var possibleMoves = Pawn.ComputePossibleMoves(from, this, color);
+                AddAllPossibleMovesPawn(from, possibleMoves, allPseudoLegalMoves, ref moveCount);
             }
+
+            // --- Rooks ---
+            var rooks = Position[colorIndex, (int)PieceType.Rook];
+            while (rooks != 0) {
+                var from = BitOperations.LsbIndexBitboard(rooks);
+                BitOperations.del_1st_bit(ref rooks);
+
+                var possibleMoves = Rook.ComputePossibleMoves(from, this, color);
+                AddAllPossibleMoves(from, possibleMoves, allPseudoLegalMoves, PieceType.Rook, ref moveCount);
+            }
+
+            // --- Knights ---
+            var knights = Position[colorIndex, (int)PieceType.Knight];
+            while (knights != 0) {
+                var from = BitOperations.LsbIndexBitboard(knights);
+                BitOperations.del_1st_bit(ref knights);
+
+                var possibleMoves = Knight.ComputePossibleMoves(from, this, color);
+                AddAllPossibleMoves(from, possibleMoves, allPseudoLegalMoves, PieceType.Knight, ref moveCount);
+            }
+
+            // --- Bishops ---
+            var bishops = Position[colorIndex, (int)PieceType.Bishop];
+            while (bishops != 0) {
+                var from = BitOperations.LsbIndexBitboard(bishops);
+                BitOperations.pop_1st_bit(ref bishops);
+
+                var possibleMoves = Bishop.ComputePossibleMoves(from, this, color);
+                AddAllPossibleMoves(from, possibleMoves, allPseudoLegalMoves, PieceType.Bishop, ref moveCount);
+            }
+
+            // --- Queens ---
+            var queens = Position[colorIndex, (int)PieceType.Queen];
+            while (queens != 0) {
+                var from = BitOperations.LsbIndexBitboard(queens);
+                BitOperations.pop_1st_bit(ref queens);
+
+                var possibleMoves = Queen.ComputePossibleMoves(from, this, color);
+                AddAllPossibleMoves(from, possibleMoves, allPseudoLegalMoves, PieceType.Queen, ref moveCount);
+            }
+
+            // --- King ---
+            var king = Position[colorIndex, (int)PieceType.King];
+            var kingMoves = King.ComputePossibleAttacks(king, this, color);
+            if (ShouldCheckCastling()) {
+                kingMoves |= King.ComputePossibleCastlingMoves(king, this, color);
+            }
+            AddAllPossibleMovesKing(king, kingMoves, allPseudoLegalMoves, PieceType.King, ref moveCount);
 
             return moveCount;
         }
+
 
         public ulong Perft(int depth) {
             //return DrawPerftTree(depth, indent: "");
