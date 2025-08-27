@@ -23,17 +23,6 @@ namespace ChessEngine.Pieces {
             public const Bitboard BlackQueenSideEmpty = (1UL << (int)Square.D8) | (1UL << (int)Square.C8) | (1UL << (int)Square.B8);
         }
 
-        public static class CastleBitboards {
-            public const Bitboard H1 = 1UL << 7;
-            public const Bitboard F1 = 1UL << 5;
-            public const Bitboard A1 = 1UL << 0;
-            public const Bitboard D1 = 1UL << 3;
-            public const Bitboard H8 = 1UL << 63;
-            public const Bitboard F8 = 1UL << 61;
-            public const Bitboard A8 = 1UL << 56;
-            public const Bitboard D8 = 1UL << 59;
-        }
-
         static King() {
             InitKingAttacks();
         }

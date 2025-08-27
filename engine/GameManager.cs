@@ -54,15 +54,10 @@ namespace ChessEngine {
 
                 // should start with white, compute move as white, then change the turn color after the 
                 else if (command == "go") {
-                    int nMoves = chessboard.GenerateLegalMoves(allLegalMoves);
+                    
 
-                    Random random = new();
-                    int r = random.Next(nMoves);
-                    Move move = allLegalMoves[r];
-                    Move.MakeMove(chessboard, move);
-
-                    allLegalMoves.Clear();
-                    Console.WriteLine($"bestmove {move.ToString().ToLower()}");
+                    //allLegalMoves.Clear();
+                    //Console.WriteLine($"bestmove {move.ToString().ToLower()}");
                 }
             }
         }

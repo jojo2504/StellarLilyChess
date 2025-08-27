@@ -34,9 +34,12 @@ namespace ChessEngine {
         // 14    | F  | T  | T  | T  | 1110
         // 15    | T  | T  | T  | T  | 1111
         public static readonly ulong[] castlingRights = new ulong[16];   // all combinations
+        public static int castlingRightsIndex = 0;                                       // current index 0-15
 
         public static readonly ulong[] enPassantFile = new ulong[8];     // files a-h
-        public static readonly ulong sideToMove;                         // single value
+        public static int enPassantFileIndex = 0;                             // current index 0-7, or 8 if no en passant available
+
+        public static readonly ulong blackToMove;                         // single value
 
         static ZobristHashing() {
             // Initialize piece-square table
@@ -54,17 +57,17 @@ namespace ChessEngine {
                 enPassantFile[i] = BitOperations.random_Bitboard();
             }
 
-            sideToMove = BitOperations.random_Bitboard();
+            blackToMove = BitOperations.random_Bitboard();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong ComputeCastlingRightsHash(in State state) {
-            int index = 0;
-            if (state.CanWhiteKingCastle) index |= 1;   // 0001
-            if (state.CanWhiteQueenCastle) index |= 2;  // 0010
-            if (state.CanBlackKingCastle) index |= 4;   // 0100
-            if (state.CanBlackQueenCastle) index |= 8;  // 1000
-            return castlingRights[index];
+            castlingRightsIndex = 0;
+            if (state.CanWhiteKingCastle) castlingRightsIndex |= 1;   // 0001
+            if (state.CanWhiteQueenCastle) castlingRightsIndex |= 2;  // 0010
+            if (state.CanBlackKingCastle) castlingRightsIndex |= 4;   // 0100
+            if (state.CanBlackQueenCastle) castlingRightsIndex |= 8;  // 1000
+            return castlingRights[castlingRightsIndex];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -64,10 +64,10 @@ namespace ChessEngine {
         public Bitboard[,] Position = new Bitboard[2, 6];
         public Bitboard AllWhitePieces = 0UL;
         public Bitboard AllBlackPieces = 0UL;
-        public Bitboard AllPieces = 0UL;
+        public Bitboard AllPieces => AllWhitePieces | AllBlackPieces;
 
         public State State = new();
-        public const ushort MaxPly = 256;
+        public const ushort MaxPly = 2048;
         public State[] stateStack = new State[MaxPly];
         public ushort plyIndex = 0;
 
@@ -86,13 +86,11 @@ namespace ChessEngine {
 
         public Chessboard(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
             ParseFEN(fen);
-            InitializeState();
-            stateStack[plyIndex++] = State; // halfmove 0
-        }
 
-        void InitializeState() {
+            // init game state not in fen
             State.Checkmated = false;
             State.Stalemated = false;
+            stateStack[plyIndex++] = State; // halfmove 0
         }
 
         void ParseFEN(string fen) {
@@ -168,12 +166,14 @@ namespace ChessEngine {
                         break;
                 }
             }
-            State.ZobristHashKey ^= ZobristHashing.ComputeCastlingRightsHash(in State);
+
+            State.ZobristHashKey ^= ZobristHashing.ComputeCastlingRightsHash(State);
 
             if (Enum.TryParse<Square>(epSquare, out var square)) {
                 State.EnPassantSquare = square;
-                int epFile = (int)square % 8;
-                State.ZobristHashKey ^= ZobristHashing.enPassantFile[epFile];
+                ZobristHashing.enPassantFileIndex = (int)square % 8;
+                Console.WriteLine($"En passant file index: {ZobristHashing.enPassantFileIndex}");
+                State.ZobristHashKey ^= ZobristHashing.enPassantFile[ZobristHashing.enPassantFileIndex];
             }
             else {
                 State.EnPassantSquare = null;
@@ -389,27 +389,9 @@ namespace ChessEngine {
             }
         }
 
-        public int GenerateLegalMoves(Span<Move> LegalMoves) {
-            int nMoves, i;
-            int lMoves = 0;
-            Span<Move> allPseudoLegalMoves = stackalloc Move[256];
-
-            nMoves = GenerateMoves(allPseudoLegalMoves);
-            for (i = 0; i < nMoves; i++) {
-                Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsInCheck(stateStack[plyIndex].TurnColor, allPseudoLegalMoves[i])) {
-                    LegalMoves[i] = allPseudoLegalMoves[i];
-                    lMoves++;
-                }
-                Move.UnmakeMove(this, allPseudoLegalMoves[i]);
-            }
-
-            return lMoves;
-        }
-
         //check if the king from a color is in check
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsInCheck(TurnColor turnColor, in Move lastMove) {
+        public bool IsInCheck(TurnColor turnColor) {
             var kingBitboard = Position[(int)turnColor, (int)PieceType.King];
             return IsSquareAttackedByColor(kingBitboard, turnColor ^ TurnColor.Black);
 
@@ -500,13 +482,30 @@ namespace ChessEngine {
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        int GenerateMoves(Span<Move> allPseudoLegalMoves) {
+        public int GenerateMoves(Span<Move> allPseudoLegalMoves) {
             int moveCount = 0;
             for (int pieceTypeIndex = 0; pieceTypeIndex < 6; pieceTypeIndex++) {
                 GetAllPossiblePieceMoves((int)State.TurnColor, pieceTypeIndex, allPseudoLegalMoves, ref moveCount);
             }
 
             return moveCount;
+        }
+
+        public int GenerateLegalMoves(Span<Move> LegalMoves) {
+            int nMoves, i;
+            int lMoves = 0;
+            Span<Move> allPseudoLegalMoves = stackalloc Move[218];
+
+            nMoves = GenerateMoves(allPseudoLegalMoves);
+            for (i = 0; i < nMoves; i++) {
+                MakeMove(this, allPseudoLegalMoves[i]);
+                if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
+                    LegalMoves[lMoves++] = allPseudoLegalMoves[i];
+                }
+                UnmakeMove(this, allPseudoLegalMoves[i]);
+            }
+
+            return lMoves;
         }
 
         public ulong Perft(int depth) {
@@ -521,7 +520,7 @@ namespace ChessEngine {
             n_moves = GenerateMoves(allPseudoLegalMoves);
             for (i = 0; i < n_moves; i++) {
                 MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsInCheck(stateStack[plyIndex].TurnColor, allPseudoLegalMoves[i])) {
+                if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
                     nodes += Perft(depth - 1);
                 }
                 UnmakeMove(this, allPseudoLegalMoves[i]);
@@ -550,7 +549,7 @@ namespace ChessEngine {
                 Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move} {(SpecialMovesCode)move.SpecialCode}");
 
                 Move.MakeMove(this, move);
-                bool isInCheck = IsInCheck(stateStack[plyIndex].TurnColor, move);
+                bool isInCheck = IsInCheck(stateStack[plyIndex].TurnColor);
                 if (!isInCheck) {
                     //Logger.Log(Channel.Debug, "AllWhitePieces", StringHelper.FormatAsChessboard(AllWhitePieces));
                     //Logger.Log(Channel.Debug, "AllBlackPieces", StringHelper.FormatAsChessboard(AllBlackPieces));
@@ -582,7 +581,7 @@ namespace ChessEngine {
 
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsInCheck(stateStack[plyIndex - 1].TurnColor, allPseudoLegalMoves[i])) {
+                if (!IsInCheck(stateStack[plyIndex - 1].TurnColor)) {
                     ulong moveNodes = Perft(depth - 1);  // Store individual result
                     nodes += moveNodes;                   // Add to total
                     Move.UnmakeMove(this, allPseudoLegalMoves[i]);
