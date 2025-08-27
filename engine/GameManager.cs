@@ -1,23 +1,24 @@
 using System.Diagnostics;
 using System.IO.Pipelines;
+using ChessEngine.Evaluation;
 using ChessEngine.Pieces;
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
 
-using Bitboard = ulong;
-
 namespace ChessEngine {
     class GameManager {
-        Chessboard chessboard = new();
+        public Chessboard chessboard = new();
+        public DrawDetector drawDetector = new();
+        public GameResult gameResult = new();
         string command;
         string[] remaining;
 
         public GameManager() {
         }
 
-        public void StartGame() {
+        public void StartUCIGame() {
             Logger.Log(Channel.Game, "starting game");
-            
+
             Span<Move> allLegalMoves = stackalloc Move[256];
             while (true) {
                 var input = Console.ReadLine();
@@ -54,11 +55,40 @@ namespace ChessEngine {
 
                 // should start with white, compute move as white, then change the turn color after the 
                 else if (command == "go") {
-                    
+
 
                     //allLegalMoves.Clear();
                     //Console.WriteLine($"bestmove {move.ToString().ToLower()}");
                 }
+            }
+        }
+
+        public void StartSelfGame() {
+            while (!chessboard.State.Checkmated && !chessboard.State.Stalemated && !drawDetector.IsGameDraw(chessboard)) {
+                gameResult.PositionList.Add(chessboard.Position);
+
+                Span<Move> allLegalMoves = stackalloc Move[218];
+                int n_moves = chessboard.GenerateLegalMoves(allLegalMoves);
+                if (n_moves == 0) {
+                    if (chessboard.IsInCheck(chessboard.State.TurnColor)) {
+                        chessboard.State.Checkmated = true;
+                    }
+                    else {
+                        chessboard.State.Stalemated = true;
+                    }
+                    break;
+                }
+
+                Random rand = new Random();
+                int moveIndex = rand.Next(n_moves);
+                Move.MakeMove(chessboard, allLegalMoves[moveIndex]);
+            }
+
+            if (chessboard.State.Checkmated) {
+                gameResult.result = chessboard.State.TurnColor == TurnColor.White ? 0.0f : 1.0f;
+            }
+            else {
+                gameResult.result = 0.5f;
             }
         }
     }

@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using ChessEngine.Magica;
 using ChessEngine.Utils;
-using Bitboard = ulong;
 
 namespace ChessEngine.Pieces {
     public static class Bishop {

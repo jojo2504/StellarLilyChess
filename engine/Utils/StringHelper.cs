@@ -1,6 +1,5 @@
 using System.Text;
 using ChessEngine.Utils.Logging;
-using Bitboard = ulong;
 
 namespace ChessEngine.Utils {
     public static class StringHelper {

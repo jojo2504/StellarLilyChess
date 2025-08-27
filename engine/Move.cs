@@ -1,12 +1,8 @@
 using ChessEngine.Utils;
-using ChessEngine.Utils.Logging;
-using Bitboard = ulong;
 using ChessEngine.Pieces;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace ChessEngine {
-
     public readonly struct Move {
         public readonly ushort word;
         public readonly PieceType pieceType;

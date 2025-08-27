@@ -1,5 +1,3 @@
-using Bitboard = ulong;
-
 namespace ChessEngine {
     public static class LookupTables {
         private static readonly Bitboard[] rankMask = new Bitboard[8];

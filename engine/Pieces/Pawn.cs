@@ -1,7 +1,5 @@
 using ChessEngine.Utils;
-using ChessEngine.Utils.Logging;
 using static ChessEngine.Move;
-using Bitboard = ulong;
 
 namespace ChessEngine.Pieces {
     public static class Pawn {

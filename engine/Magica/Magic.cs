@@ -1,8 +1,5 @@
-using Bitboard = ulong;
-using ChessEngine.Utils.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ChessEngine.Pieces;
 using System.Reflection;
 
 namespace ChessEngine.Magica {

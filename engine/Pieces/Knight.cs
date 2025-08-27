@@ -1,7 +1,5 @@
 using System.Runtime.CompilerServices;
 using ChessEngine.Utils;
-using ChessEngine.Utils.Logging;
-using Bitboard = ulong;
 
 namespace ChessEngine.Pieces {
     public static class Knight {

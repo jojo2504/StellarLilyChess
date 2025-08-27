@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using ChessEngine.Magica;
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
-using Bitboard = ulong;
 
 namespace ChessEngine.Pieces {
     public static class Rook {

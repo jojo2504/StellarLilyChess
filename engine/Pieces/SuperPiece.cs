@@ -1,5 +1,3 @@
-using Bitboard = ulong;
-
 namespace ChessEngine.Pieces {
     public static class SuperPiece {
         public static Bitboard[] RookAttacks = new Bitboard[64]; // provide Rook attacks for each square with empty blockers

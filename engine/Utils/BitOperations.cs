@@ -1,4 +1,3 @@
-using Bitboard = ulong;
 using System.Numerics;
 using ChessEngine.Utils.Logging;
 using System.Runtime.CompilerServices;
