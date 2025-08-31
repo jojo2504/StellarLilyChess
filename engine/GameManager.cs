@@ -2,14 +2,16 @@ using System.Diagnostics;
 using System.IO.Pipelines;
 using ChessEngine.Evaluation;
 using ChessEngine.Pieces;
+using ChessEngine.Records;
 using ChessEngine.Utils;
 using ChessEngine.Utils.Logging;
+using ChessEngine.SearchNamespace;
 
 namespace ChessEngine {
     class GameManager {
         public Chessboard chessboard = new();
-        public DrawDetector drawDetector = new();
         public GameResult gameResult = new();
+        public GameRecord gameRecord = new();
         string command;
         string[] remaining;
 
@@ -64,24 +66,13 @@ namespace ChessEngine {
         }
 
         public void StartSelfGame() {
-            while (!chessboard.State.Checkmated && !chessboard.State.Stalemated && !drawDetector.IsGameDraw(chessboard)) {
-                gameResult.PositionList.Add(chessboard.Position);
-
-                Span<Move> allLegalMoves = stackalloc Move[218];
-                int n_moves = chessboard.GenerateLegalMoves(allLegalMoves);
-                if (n_moves == 0) {
-                    if (chessboard.IsInCheck(chessboard.State.TurnColor)) {
-                        chessboard.State.Checkmated = true;
-                    }
-                    else {
-                        chessboard.State.Stalemated = true;
-                    }
-                    break;
-                }
-
-                Random rand = new Random();
-                int moveIndex = rand.Next(n_moves);
-                Move.MakeMove(chessboard, allLegalMoves[moveIndex]);
+            Console.WriteLine("starting game against self");
+            //while (!chessboard.State.Checkmated && !chessboard.State.Stalemated && !DrawDetector.IsGameDraw(chessboard)) {
+            for (int turn = 0; turn < 30; turn++) {
+                Move bestMove = Search.BestMove(chessboard);
+                Move.MakeMove(chessboard, bestMove);
+                Console.WriteLine($"{turn} played {bestMove}");
+                gameRecord.AddMove(bestMove);
             }
 
             if (chessboard.State.Checkmated) {
@@ -90,6 +81,8 @@ namespace ChessEngine {
             else {
                 gameResult.result = 0.5f;
             }
+
+            Console.WriteLine(gameRecord.ConvertToPGN());
         }
     }
 }

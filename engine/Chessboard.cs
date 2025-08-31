@@ -48,7 +48,8 @@ namespace ChessEngine {
         Bishop,
         Rook,
         Queen,
-        King
+        King,
+        None
     }
 
     public enum TurnColor {
@@ -311,7 +312,7 @@ namespace ChessEngine {
         }
 
         void GetAllPossiblePieceMoves(int colorIndex, int pieceTypeIndex, Span<Move> allPseudoLegalMoves, ref int moveCount) {
-
+            //Console.WriteLine("{0} {1} {2}", colorIndex, pieceTypeIndex, moveCount);
             var pieceBitboard = Position[colorIndex, pieceTypeIndex];
             Bitboard possibleMoves;
 
@@ -487,10 +488,30 @@ namespace ChessEngine {
             return moveCount;
         }
 
+        public int GenerateLegalCaptureMoves(Span<Move> LegalMoves) {
+            int nMoves, i;
+            int lMoves = 0;
+
+            Span<Move> allPseudoLegalMoves = stackalloc Move[256];
+            nMoves = GenerateMoves(allPseudoLegalMoves);
+            int nCapMoves = 0;
+            for (i = 0; i < nMoves; i++) {
+                if ((allPseudoLegalMoves[i].bitboardTo & AllPieces) != 0) {
+                    MakeMove(this, allPseudoLegalMoves[i]);
+                    if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
+                        LegalMoves[lMoves++] = allPseudoLegalMoves[i];
+                        nCapMoves++;
+                    }
+                    UnmakeMove(this, allPseudoLegalMoves[i]);
+                }
+            }
+            return nCapMoves;
+        }
+
         public int GenerateLegalMoves(Span<Move> LegalMoves) {
             int nMoves, i;
             int lMoves = 0;
-            Span<Move> allPseudoLegalMoves = stackalloc Move[218];
+            Span<Move> allPseudoLegalMoves = stackalloc Move[256];
 
             nMoves = GenerateMoves(allPseudoLegalMoves);
             for (i = 0; i < nMoves; i++) {
@@ -509,7 +530,7 @@ namespace ChessEngine {
             if (depth == 0)
                 return 1UL;
 
-            Span<Move> allPseudoLegalMoves = stackalloc Move[218];
+            Span<Move> allPseudoLegalMoves = stackalloc Move[256];
             ulong nodes = 0;
             int n_moves, i;
 

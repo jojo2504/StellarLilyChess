@@ -10,3 +10,6 @@ BitboardChessConverter.py
 
 **/*.nettrace
 **/*.nettrace.*
+
+sh.sh
+preview.md

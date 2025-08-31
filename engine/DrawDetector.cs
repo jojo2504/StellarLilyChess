@@ -5,18 +5,14 @@ using System.Threading.Tasks;
 using ChessEngine.Utils;
 
 namespace ChessEngine {
-    public class DrawDetector {
-        public Dictionary<ulong, int> PositionsSeen = new Dictionary<ulong, int>(); // store zobrist hashes of seen positions 
+    public static class DrawDetector {
+        static public Dictionary<ulong, int> PositionsSeen = new Dictionary<ulong, int>(); // store zobrist hashes of seen positions 
 
-        public DrawDetector() {
-
-        }
-
-        public bool IsGameDraw(Chessboard chessboard) {
+        static public bool IsGameDraw(Chessboard chessboard) {
             return DrawByThreefoldRepetition(chessboard) || DrawByFiftyMove(chessboard) || DrawByInsufficientMaterials(chessboard);
         }
 
-        private bool DrawByThreefoldRepetition(Chessboard chessboard) {
+        static private bool DrawByThreefoldRepetition(Chessboard chessboard) {
             if (PositionsSeen.ContainsKey(chessboard.State.ZobristHashKey))
                 PositionsSeen[chessboard.State.ZobristHashKey]++;
             else
@@ -24,11 +20,11 @@ namespace ChessEngine {
             return PositionsSeen[chessboard.State.ZobristHashKey] >= 3;
         }
 
-        private bool DrawByFiftyMove(Chessboard chessboard) {
+        static private bool DrawByFiftyMove(Chessboard chessboard) {
             return chessboard.State.HalfMoveClock >= 100;
         }
 
-        private bool DrawByInsufficientMaterials(Chessboard chessboard) {
+        static private bool DrawByInsufficientMaterials(Chessboard chessboard) {
             var allPieceNumber = BitOperations.CountBits(chessboard.AllPieces);
             if (allPieceNumber >= 5) {
                 return false;

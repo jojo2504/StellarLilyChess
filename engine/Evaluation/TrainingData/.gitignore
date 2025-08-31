@@ -1,0 +1,6 @@
+# ignore all
+**
+
+#except self + readme
+!.gitignore
+!README

@@ -1,13 +1,14 @@
 using ChessEngine.Utils;
 using ChessEngine.Pieces;
 using System.Runtime.CompilerServices;
+using ChessEngine.Evaluation;
 
 namespace ChessEngine {
     public readonly struct Move {
         public readonly ushort word;
         public readonly PieceType pieceType;
         private readonly Bitboard bitboardFrom;
-        private readonly Bitboard bitboardTo;
+        public readonly Bitboard bitboardTo;
 
         public Move(ushort word, PieceType pieceType) {
             this.word = word;
@@ -81,6 +82,34 @@ namespace ChessEngine {
             var index = ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, fromIndex);
             chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[index];
             chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[index - fromIndex + BitOperations.ToIndex(to)];
+            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.White,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.White, BitOperations.ToSquare(to),
+                    pieceType,
+                    turnColor
+                )
+            );
+            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.Black,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.Black, BitOperations.ToSquare(to),
+                    pieceType,
+                    turnColor
+                )
+            );
+            NNUE.Network.AccumulatorSub(NNUE.Network.AccumulatorPair.White,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.White, BitOperations.ToSquare(from),
+                    pieceType,
+                    turnColor
+                )
+            );
+            NNUE.Network.AccumulatorSub(NNUE.Network.AccumulatorPair.Black,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.Black, BitOperations.ToSquare(from),
+                    pieceType,
+                    turnColor
+                )
+            );
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -90,6 +119,20 @@ namespace ChessEngine {
                 ref chessboard.AllWhitePieces : ref chessboard.AllBlackPieces);
             colorPieces ^= square;
             chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, BitOperations.ToIndex(square))];
+            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.White,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.White, BitOperations.ToSquare(square),
+                    pieceType,
+                    turnColor
+                )
+            );
+            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.Black,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.Black, BitOperations.ToSquare(square),
+                    pieceType,
+                    turnColor
+                )
+            );
         }
 
         /// <summary>

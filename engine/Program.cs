@@ -2,7 +2,7 @@ global using Bitboard = ulong;
 global using ChessEngine.Utils.Logging;
 
 using ChessEngine.Evaluation;
-using ChessEngine.Search;
+using ChessEngine.SearchNamespace;
 
 namespace ChessEngine {
     class Program {
@@ -14,9 +14,13 @@ namespace ChessEngine {
                 //Console.WriteLine("Perft completed for depth 5");
             }*/
             if (args.Length == 0) {
-                NNUE_Trainer nNUE_Training = new();
+                //Chessboard chessboard = new();
+                //chessboard.Perft(4);
+                GameManager gameManager = new();
+                gameManager.StartSelfGame();
+                Console.WriteLine("game finished");
             }
-            
+
             // This is the entry point of the application for the perftree tests 
             else if (args.Length > 0 && args.Length < 3) {
                 var depth = int.Parse(args[0]);
