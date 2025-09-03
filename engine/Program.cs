@@ -16,6 +16,7 @@ namespace ChessEngine {
             if (args.Length == 0) {
                 //Chessboard chessboard = new();
                 //chessboard.Perft(4);
+                //GameManager gameManager = new(fen: "7k/R7/5K2/8/8/8/8/8 w - - 0 1");
                 GameManager gameManager = new();
                 gameManager.StartSelfGame();
                 Console.WriteLine("game finished");

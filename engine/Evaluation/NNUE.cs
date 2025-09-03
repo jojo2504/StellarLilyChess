@@ -13,7 +13,7 @@ namespace ChessEngine.Evaluation {
         static public Network Network { get { return network; } set { network = value; } }
 
         static NNUE() {
-            Network = Network.LoadFromBinary("/home/jojo/Documents/c#/StellarLilyChess/engine/Evaluation/TrainingData/quantised.bin");
+            Network = Network.LoadFromBinary("/home/jojo/Documents/c#/StellarLilyChess/engine/Evaluation/TrainingData/checkpoints/simple-40/quantised.bin");
         }        
     }
 }

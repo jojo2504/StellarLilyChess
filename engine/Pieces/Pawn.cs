@@ -6,25 +6,25 @@ namespace ChessEngine.Pieces {
         public static Bitboard[,] PawnAttackMasks = new Bitboard[2, 64];
 
         public static readonly Dictionary<char, byte> PromotionDict = new() {
-            {'n', (byte)SpecialMovesCode.KnightPromotion},
-            {'b', (byte)SpecialMovesCode.BishopPromotion},
-            {'r', (byte)SpecialMovesCode.RookPromotion},
-            {'q', (byte)SpecialMovesCode.QueenPromotion},
+            {'n', (byte)MoveKind.KnightPromotion},
+            {'b', (byte)MoveKind.BishopPromotion},
+            {'r', (byte)MoveKind.RookPromotion},
+            {'q', (byte)MoveKind.QueenPromotion},
         };
 
         // Precomputed promotion special codes
-        public static readonly SpecialMovesCode[] QuietPromotions = {
-            SpecialMovesCode.KnightPromotion,
-            SpecialMovesCode.BishopPromotion,
-            SpecialMovesCode.RookPromotion,
-            SpecialMovesCode.QueenPromotion
+        public static readonly MoveKind[] QuietPromotions = {
+            MoveKind.KnightPromotion,
+            MoveKind.BishopPromotion,
+            MoveKind.RookPromotion,
+            MoveKind.QueenPromotion
         };
 
-        public static readonly SpecialMovesCode[] CapturePromotions = {
-            SpecialMovesCode.KnightPromotionCapture,
-            SpecialMovesCode.BishopPromotionCapture,
-            SpecialMovesCode.RookPromotionCapture,
-            SpecialMovesCode.QueenPromotionCapture
+        public static readonly MoveKind[] CapturePromotions = {
+            MoveKind.KnightPromotionCapture,
+            MoveKind.BishopPromotionCapture,
+            MoveKind.RookPromotionCapture,
+            MoveKind.QueenPromotionCapture
         };
 
         static Pawn() {

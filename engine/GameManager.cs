@@ -9,13 +9,23 @@ using ChessEngine.SearchNamespace;
 
 namespace ChessEngine {
     class GameManager {
-        public Chessboard chessboard = new();
+        public Chessboard chessboard;
         public GameResult gameResult = new();
         public GameRecord gameRecord = new();
         string command;
         string[] remaining;
 
+        public GameManager(string fen) {
+            chessboard = new(fen);
+        }
+
         public GameManager() {
+            chessboard = new();
+        }
+
+        public void PushUci(string move) {
+            Move.MakeMove(chessboard, Move.DecodeUciMove(chessboard, move));
+            Logger.Log(Channel.Debug, chessboard);
         }
 
         public void StartUCIGame() {
@@ -44,7 +54,7 @@ namespace ChessEngine {
                     // should reconstruct the whole game before continuing (optional)
 
                     Logger.Log(Channel.Game, $"Received {remaining[remaining.Length - 1]}");
-                    chessboard.PushUci(remaining[remaining.Length - 1]);
+                    PushUci(remaining[remaining.Length - 1]);
                     Logger.Log(Channel.Game, chessboard.ToString());
 
                     Logger.Log(Channel.Game, "new finished (stack):");
@@ -57,20 +67,50 @@ namespace ChessEngine {
 
                 // should start with white, compute move as white, then change the turn color after the 
                 else if (command == "go") {
-
-
-                    //allLegalMoves.Clear();
-                    //Console.WriteLine($"bestmove {move.ToString().ToLower()}");
+                    Move bestMove = Search.BestMove(chessboard);
+                    Move.MakeMove(chessboard, bestMove);
+                    gameRecord.AddMove(bestMove);
+                    Console.WriteLine($"bestmove {bestMove.ToString().ToLower()}");
                 }
             }
+
+            if (chessboard.State.Checkmated) {
+                gameResult.result = chessboard.State.TurnColor == TurnColor.White ? 0.0f : 1.0f;
+            }
+            else {
+                gameResult.result = 0.5f;
+            }
+
+            Console.WriteLine(gameRecord.ConvertToPGN());
         }
 
         public void StartSelfGame() {
             Console.WriteLine("starting game against self");
             //while (!chessboard.State.Checkmated && !chessboard.State.Stalemated && !DrawDetector.IsGameDraw(chessboard)) {
-            for (int turn = 0; turn < 30; turn++) {
+            for (int turn = 0; turn < 20; turn++) {
+                Console.WriteLine(chessboard.State.TurnColor);
                 Move bestMove = Search.BestMove(chessboard);
                 Move.MakeMove(chessboard, bestMove);
+                Console.WriteLine($"{turn} played {bestMove}");
+                gameRecord.AddMove(bestMove);
+            }
+
+            if (chessboard.State.Checkmated) {
+                gameResult.result = chessboard.State.TurnColor == TurnColor.White ? 0.0f : 1.0f;
+            }
+            else {
+                gameResult.result = 0.5f;
+            }
+
+            Console.WriteLine(gameRecord.ConvertToPGN());
+        }
+
+        public void StartSelfUCIGame() {
+            Console.WriteLine("starting game against self UCI");
+            //while (!chessboard.State.Checkmated && !chessboard.State.Stalemated && !DrawDetector.IsGameDraw(chessboard)) {
+            for (int turn = 0; turn < 100; turn++) {
+                Move bestMove = Search.BestMove(chessboard);
+                PushUci(bestMove.ToString().ToLower());
                 Console.WriteLine($"{turn} played {bestMove}");
                 gameRecord.AddMove(bestMove);
             }

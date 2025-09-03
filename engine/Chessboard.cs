@@ -232,15 +232,15 @@ namespace ChessEngine {
                 ushort word = (ushort)(from | (toBitboardIndex << 4));
                 if (Math.Abs(fromBitboardIndex - toBitboardIndex) == 2) {
                     if (toBitboard == (Bitboard)BSquare.C1 || toBitboard == (Bitboard)BSquare.C8) {
-                        word |= (byte)SpecialMovesCode.QueenCastle;
+                        word |= (byte)MoveKind.QueenCastle;
                     }
                     else if (toBitboard == (Bitboard)BSquare.G1 || toBitboard == (Bitboard)BSquare.G8) {
-                        word |= (byte)SpecialMovesCode.KingCastle;
+                        word |= (byte)MoveKind.KingCastle;
                     }
                 }
 
                 else if ((toBitboard & AllPieces) != 0) {
-                    word |= (ushort)SpecialMovesCode.Captures;
+                    word |= (ushort)MoveKind.Captures;
                 }
 
                 var move = new Move(word: word, pieceType: pieceType);
@@ -272,18 +272,18 @@ namespace ChessEngine {
                     bool isCapture = ((1UL << toIndex) & AllPieces) != 0;
                     int distance = Math.Abs(fromBitboardIndex - toIndex);
 
-                    SpecialMovesCode specialCode;
+                    MoveKind specialCode;
                     if (isCapture) {
-                        specialCode = SpecialMovesCode.Captures;
+                        specialCode = MoveKind.Captures;
                     }
                     else if (distance == 16) {
-                        specialCode = SpecialMovesCode.DoublePawnPush;
+                        specialCode = MoveKind.DoublePawnPush;
                     }
                     else if (distance == 7 || distance == 9) {
-                        specialCode = SpecialMovesCode.EpCapture;
+                        specialCode = MoveKind.EpCapture;
                     }
                     else {
-                        specialCode = SpecialMovesCode.QuietMoves;
+                        specialCode = MoveKind.QuietMoves;
                     }
 
                     // Create move directly without calling FindSpecialMoveCode
@@ -303,7 +303,7 @@ namespace ChessEngine {
 
                 ushort word = (ushort)(from | (BitOperations.ToIndex(toBitboard) << 4));
                 if ((toBitboard & AllPieces) != 0) {
-                    word |= (ushort)SpecialMovesCode.Captures;
+                    word |= (ushort)MoveKind.Captures;
                 }
 
                 var move = new Move(word, pieceType: pieceType);
@@ -563,7 +563,7 @@ namespace ChessEngine {
                 string branch = isLastMove ? "└─" : "├─";
                 string newIndent = indent + (isLastMove ? "   " : "│  ");
 
-                Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move} {(SpecialMovesCode)move.SpecialCode}");
+                Logger.Log(Channel.Debug, $"{indent}{branch} {State.TurnColor} {move} {(MoveKind)move.MoveKindCode}");
 
                 Move.MakeMove(this, move);
                 bool isInCheck = IsInCheck(stateStack[plyIndex].TurnColor);
@@ -613,10 +613,6 @@ namespace ChessEngine {
             Console.WriteLine(); // Empty line before total
             Console.WriteLine(nodes); // Print total
             return nodes;
-        }
-
-        public void PushUci(string move) {
-            Move.MakeMove(this, Move.DecodeUciMove(this, move));
         }
     }
 }
