@@ -7,20 +7,29 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace ChessEngine.Evaluation {
+    public struct Accumulator { // 1 neuron, many of them forms a network
+        const int HL_SIZE = 2048; // hidden layer size
+        public short[] values = new short[HL_SIZE];
+
+        public Accumulator() {
+        }
+    }
+
     public struct Network {
-        public const int INPUT_SIZE = 768; // // relative to king position
-        public const int HL_SIZE = 2048; // hiden layer size
+        const int INPUT_SIZE = 768; // // relative to king position
+        const int HL_SIZE = 2048; // hiden layer size
 
         // These parameters are part of the training configuration
         // These are the commonly used values as of 2024
         const int SCALE = 400;
-        const int QA = 255;
-        const int QB = 64;
+        const short QA = 255;
+        const short QB = 64;
 
-        public readonly short[,] accumulatorWeights = new short[INPUT_SIZE, HL_SIZE]; // 768, 2048 // for each input, it has its own weight
-        public readonly short[] accumulatorBiases = new short[HL_SIZE];
-        public readonly short[] outputWeights = new short[2 * HL_SIZE]; // one for each perspective
-        public short outputBias;
+        readonly Accumulator[] FeatureWeights = new Accumulator[INPUT_SIZE]; // 2048 * 768 // for each input, it has its own weight
+        readonly Accumulator FeatureBias = new Accumulator(); // 2048;
+        readonly short[] outputWeights = new short[2 * HL_SIZE]; // one for each perspective
+
+        short outputBias;
 
         public AccumulatorPair AccumulatorPair { get; set; }
 
@@ -29,22 +38,27 @@ namespace ChessEngine.Evaluation {
             Console.WriteLine("Init Network");
         }
 
-        public static Network LoadFromBinary(string filePath) {
+        public static Network LoadNetwork(string filePath) {
             var network = new Network();
 
             using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             using (var reader = new BinaryReader(fileStream)) {
                 try {
+                    Logger.Log(Channel.Debug, $"Loading features weights");
                     // Load accumulator weights (768 * 2048 shorts) - CORRECTED to signed
                     for (int i = 0; i < INPUT_SIZE; i++) {
+                        network.FeatureWeights[i] = new Accumulator();
                         for (int j = 0; j < HL_SIZE; j++) {
-                            network.accumulatorWeights[i, j] = reader.ReadInt16(); // Changed from ReadUInt16
+                            network.FeatureWeights[i].values[j] = reader.ReadInt16(); // Changed from ReadUInt16
                         }
                     }
 
                     // Load accumulator biases (2048 shorts) - CORRECTED to signed
+                    Logger.Log(Channel.Debug, "Loading accumulator biases:");
                     for (int i = 0; i < HL_SIZE; i++) {
-                        network.accumulatorBiases[i] = reader.ReadInt16(); // Changed from ReadUInt16
+                        network.FeatureBias.values[i] = reader.ReadInt16(); // Changed from ReadUInt16
+                        network.AccumulatorPair.White.values[i] = network.FeatureBias.values[i];
+                        network.AccumulatorPair.Black.values[i] = network.FeatureBias.values[i];
                     }
 
                     // Load output weights (4096 shorts) - CORRECTED to signed
@@ -55,8 +69,8 @@ namespace ChessEngine.Evaluation {
                     // Load output bias (1 short) - CORRECTED to signed
                     network.outputBias = reader.ReadInt16(); // Changed from ReadUInt16
 
-                    Console.WriteLine($"Network loaded successfully from {filePath}");
-                    Console.WriteLine($"File size: {fileStream.Length} bytes");
+                    Logger.Log(Channel.Debug, $"Network loaded successfully from {filePath}");
+                    Logger.Log(Channel.Debug, $"File size: {fileStream.Length} bytes");
 
                     return network;
                 }
@@ -83,7 +97,7 @@ namespace ChessEngine.Evaluation {
 
             // Handle remainder
             for (int i = vectorCount; i < HL_SIZE; i++) {
-                accumulator.values[i] += accumulatorWeights[index, i];
+                accumulator.values[i] += FeatureWeights[index].values[i];
             }
         }
 
@@ -104,7 +118,7 @@ namespace ChessEngine.Evaluation {
 
             // Handle remainder
             for (int i = vectorCount; i < HL_SIZE; i++) {
-                accumulator.values[i] -= accumulatorWeights[index, i];
+                accumulator.values[i] -= FeatureWeights[index].values[i];
             }
         }
 
@@ -112,12 +126,12 @@ namespace ChessEngine.Evaluation {
         private Span<short> GetWeightSpan(int index) {
             // Create a span for the weight row
             return MemoryMarshal.CreateSpan(
-                ref accumulatorWeights[index, 0], HL_SIZE);
+                ref FeatureWeights[index].values[0], HL_SIZE);
         }
 
         public int CalculateIndex(TurnColor perspective, Square square, PieceType pieceType, TurnColor side) {
             if (perspective == TurnColor.Black) {
-                side = 1 - side;          // Flip side
+                side = (TurnColor)(1 - (int)side); ;          // Flip side
                 square = (Square)((int)square ^ 0b111000); // Vertically flip the square
             }
 
@@ -125,25 +139,25 @@ namespace ChessEngine.Evaluation {
             return (int)side * 64 * 6 + (int)pieceType * 64 + (int)square;
         }
 
-        short CReLU(short value, short min, short max) {
-            if (value <= min)
-                return min;
-
-            if (value >= max)
-                return max;
-
-            return value;
+        int CReLU(short value, short min, short max) {
+            return Math.Clamp(value, min, max);
+        }
+        
+        int SCReLU(short value, short min, short max) {
+            return Math.Clamp(value, min, max) * Math.Clamp(value, min, max);
         }
 
         int Activation(short value) {
-            //return SCReLU(value, 0, QA);
-            return CReLU(value, 0, QA);
+            return SCReLU(value, 0, QA);
+            //return CReLU(value, 0, QA);
         }
 
         public int Evaluate(Chessboard chessboard) {
             int colorIndex = (int)chessboard.State.TurnColor;
-            var accPair = NNUE.Network.AccumulatorPair;
-            return NNUE.Network.Forward(
+            Logger.Log(Channel.Debug, colorIndex);
+            Logger.Log(Channel.Debug, (TurnColor)colorIndex);
+            var accPair = AccumulatorPair;
+            return Forward(
             colorIndex == 0 ? accPair.White : accPair.Black,
             colorIndex == 0 ? accPair.Black : accPair.White
             );
@@ -155,26 +169,18 @@ namespace ChessEngine.Evaluation {
             // Dot product to the weights
             for (int i = 0; i < HL_SIZE; i++) {
                 // BEWARE of integer overflows here.
-                eval += Activation(stm_accumulator.values[i]) * outputWeights[i];
-                eval += Activation(nstm_accumulator.values[i]) * outputWeights[i + HL_SIZE];
+                eval += Activation(stm_accumulator.values[i]) * Convert.ToInt32(outputWeights[i]);
+                eval += Activation(nstm_accumulator.values[i]) * Convert.ToInt32(outputWeights[i + HL_SIZE]);
             }
 
             // Uncomment the following dequantization step when using SCReLU
-            // eval /= QA;
+            eval /= QA;
             eval += outputBias;
 
             eval *= SCALE;
             eval /= QA * QB;
 
             return eval;
-        }
-    }
-
-    public struct Accumulator { // 1 neuron, many of them forms a network
-        const int HL_SIZE = 2048; // hiden layer size
-        public short[] values = new short[HL_SIZE];
-
-        public Accumulator() {
         }
     }
 

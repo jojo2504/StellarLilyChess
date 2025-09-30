@@ -1,8 +1,8 @@
 {
   "Channels": {
     "General": { "Active": false },
-    "Debug":   { "Active": true },
-    "Game":    { "Active": true },
+    "Debug":   { "Active": false },
+    "Game":    { "Active": false },
     "Benchmark": { "Active": false }
   }
 }

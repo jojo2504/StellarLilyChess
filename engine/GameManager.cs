@@ -8,6 +8,10 @@ using ChessEngine.Utils.Logging;
 using ChessEngine.SearchNamespace;
 
 namespace ChessEngine {
+    internal record struct GameResult {
+        public float result; // 1.0 = white win, 0.5 = draw, 0.0 = black win
+    }
+
     class GameManager {
         public Chessboard chessboard;
         public GameResult gameResult = new();
@@ -67,9 +71,9 @@ namespace ChessEngine {
 
                 // should start with white, compute move as white, then change the turn color after the 
                 else if (command == "go") {
-                    Move bestMove = Search.BestMove(chessboard);
-                    Move.MakeMove(chessboard, bestMove);
-                    gameRecord.AddMove(bestMove);
+                    Move? bestMove = Search.BestMove(chessboard);
+                    Move.MakeMove(chessboard, (Move)bestMove);
+                    gameRecord.AddMove((Move)bestMove);
                     Console.WriteLine($"bestmove {bestMove.ToString().ToLower()}");
                 }
             }
@@ -88,18 +92,19 @@ namespace ChessEngine {
             Console.WriteLine("starting game against self");
             //while (!chessboard.State.Checkmated && !chessboard.State.Stalemated && !DrawDetector.IsGameDraw(chessboard)) {
             for (int turn = 0; turn < 20; turn++) {
-                Console.WriteLine(chessboard.State.TurnColor);
-                Move bestMove = Search.BestMove(chessboard);
-                Move.MakeMove(chessboard, bestMove);
-                Console.WriteLine($"{turn} played {bestMove}");
-                gameRecord.AddMove(bestMove);
-            }
-
-            if (chessboard.State.Checkmated) {
-                gameResult.result = chessboard.State.TurnColor == TurnColor.White ? 0.0f : 1.0f;
-            }
-            else {
-                gameResult.result = 0.5f;
+                Move? bestMove = Search.BestMove(chessboard);
+                if (bestMove is null) {
+                    if (chessboard.State.Checkmated) {
+                        gameResult.result = chessboard.State.TurnColor == TurnColor.White ? 0.0f : 1.0f;
+                    }
+                    else {
+                        gameResult.result = 0.5f;
+                    }
+                    break;
+                }
+                Move.MakeMove(chessboard, (Move)bestMove);
+                Console.WriteLine($"{turn} {chessboard.stateStack[chessboard.plyIndex].TurnColor} played {(Move)bestMove}");
+                gameRecord.AddMove((Move)bestMove);
             }
 
             Console.WriteLine(gameRecord.ConvertToPGN());
@@ -109,20 +114,31 @@ namespace ChessEngine {
             Console.WriteLine("starting game against self UCI");
             //while (!chessboard.State.Checkmated && !chessboard.State.Stalemated && !DrawDetector.IsGameDraw(chessboard)) {
             for (int turn = 0; turn < 100; turn++) {
-                Move bestMove = Search.BestMove(chessboard);
+                Move? bestMove = Search.BestMove(chessboard);
+                if (bestMove is null) {
+                    if (chessboard.State.Checkmated) {
+                        gameResult.result = chessboard.State.TurnColor == TurnColor.White ? 0.0f : 1.0f;
+                    }
+                    else {
+                        gameResult.result = 0.5f;
+                    }
+                    break;
+                }
                 PushUci(bestMove.ToString().ToLower());
                 Console.WriteLine($"{turn} played {bestMove}");
-                gameRecord.AddMove(bestMove);
-            }
-
-            if (chessboard.State.Checkmated) {
-                gameResult.result = chessboard.State.TurnColor == TurnColor.White ? 0.0f : 1.0f;
-            }
-            else {
-                gameResult.result = 0.5f;
+                gameRecord.AddMove((Move)bestMove);
             }
 
             Console.WriteLine(gameRecord.ConvertToPGN());
+        }
+
+        public void AccumulatorDebug() {
+            Console.WriteLine("Accumulator debug:");
+            Console.WriteLine(NNUE.Network.Evaluate(chessboard));
+        }
+
+        public void PVLine() {
+            Search.BestMove(chessboard);
         }
     }
 }

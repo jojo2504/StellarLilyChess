@@ -2,6 +2,7 @@ using ChessEngine.Utils;
 using ChessEngine.Pieces;
 using System.Runtime.CompilerServices;
 using ChessEngine.Evaluation;
+using ChessEngine.SearchNamespace;
 
 namespace ChessEngine {
     public readonly struct Move {
@@ -10,6 +11,13 @@ namespace ChessEngine {
         private readonly Bitboard bitboardFrom;
         public readonly Bitboard bitboardTo;
         private static readonly bool debugPerft = false;
+
+        public override bool Equals(object? obj) {
+            if (obj is Move move) {
+                return this.word == move.word && this.pieceType == move.pieceType;
+            }
+            return false;
+        }
 
         public Move(ushort word, PieceType pieceType) {
             this.word = word;
@@ -73,76 +81,109 @@ namespace ChessEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UpdatePieceBitboard(ref Bitboard bitboard, Bitboard from, Bitboard to, Chessboard chessboard, TurnColor turnColor, PieceType pieceType) {
+        public static void UpdatePieceBitboard(ref Bitboard bitboard, Bitboard from, Bitboard to, Chessboard chessboard, TurnColor turnColor, PieceType pieceType, bool gen) {
             bitboard ^= from ^ to;
             ref Bitboard colorPieces = ref ((turnColor == TurnColor.White) ?
                 ref chessboard.AllWhitePieces : ref chessboard.AllBlackPieces);
             colorPieces ^= from ^ to;
 
-            if (debugPerft) {
+            if (gen || debugPerft) {
                 return;
             }
 
+            // Update Zobrist hash
             var fromIndex = BitOperations.ToIndex(from);
             var index = ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, fromIndex);
             chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[index];
             chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[index - fromIndex + BitOperations.ToIndex(to)];
-            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.White,
-                NNUE.Network.CalculateIndex(
-                    TurnColor.White, BitOperations.ToSquare(to),
-                    pieceType,
-                    turnColor
-                )
-            );
-            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.Black,
-                NNUE.Network.CalculateIndex(
-                    TurnColor.Black, BitOperations.ToSquare(to),
-                    pieceType,
-                    turnColor
-                )
-            );
-            NNUE.Network.AccumulatorSub(NNUE.Network.AccumulatorPair.White,
+
+            // Update Network accumulators
+            //Logger.Log(Channel.Debug, BitOperations.ToSquare(from), BitOperations.ToSquare(to), turnColor, pieceType, chessboard);
+            var accPair = NNUE.Network.AccumulatorPair;
+            NNUE.Network.AccumulatorSub(accPair.White,
                 NNUE.Network.CalculateIndex(
                     TurnColor.White, BitOperations.ToSquare(from),
                     pieceType,
                     turnColor
                 )
             );
-            NNUE.Network.AccumulatorSub(NNUE.Network.AccumulatorPair.Black,
+            NNUE.Network.AccumulatorSub(accPair.Black,
                 NNUE.Network.CalculateIndex(
                     TurnColor.Black, BitOperations.ToSquare(from),
                     pieceType,
                     turnColor
                 )
             );
+            //Logger.Log(Channel.Debug, "Subtracted to both accumulators:", turnColor, pieceType, BitOperations.ToSquare(from));
+
+            NNUE.Network.AccumulatorAdd(accPair.White,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.White, BitOperations.ToSquare(to),
+                    pieceType,
+                    turnColor
+                )
+            );
+            NNUE.Network.AccumulatorAdd(accPair.Black,
+                NNUE.Network.CalculateIndex(
+                    TurnColor.Black, BitOperations.ToSquare(to),
+                    pieceType,
+                    turnColor
+                )
+            );
+            //Logger.Log(Channel.Debug, "Added to both accumulators:", turnColor, pieceType, BitOperations.ToSquare(to));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UpdatePieceBitboard(ref Bitboard bitboard, Bitboard square, Chessboard chessboard, TurnColor turnColor, PieceType pieceType) {
+        public static void UpdatePieceBitboard(ref Bitboard bitboard, Bitboard square, Chessboard chessboard, TurnColor turnColor, PieceType pieceType, bool isAdding, bool gen) {
             bitboard ^= square;
             ref Bitboard colorPieces = ref ((turnColor == TurnColor.White) ?
                 ref chessboard.AllWhitePieces : ref chessboard.AllBlackPieces);
             colorPieces ^= square;
 
-            if (debugPerft) {
+            if (gen || debugPerft) {
                 return;
             }
 
+            // Update Zobrist hash
             chessboard.State.ZobristHashKey ^= ZobristHashing.pieceSquare[ZobristHashing.GetPieceSquareIndex(turnColor, pieceType, BitOperations.ToIndex(square))];
-            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.White,
-                NNUE.Network.CalculateIndex(
-                    TurnColor.White, BitOperations.ToSquare(square),
-                    pieceType,
-                    turnColor
-                )
-            );
-            NNUE.Network.AccumulatorAdd(NNUE.Network.AccumulatorPair.Black,
-                NNUE.Network.CalculateIndex(
-                    TurnColor.Black, BitOperations.ToSquare(square),
-                    pieceType,
-                    turnColor
-                )
-            );
+
+            // Update Network accumulators
+            //Logger.Log(Channel.Debug, BitOperations.ToSquare(square), turnColor, pieceType, chessboard);
+            var accPair = NNUE.Network.AccumulatorPair;
+            if (isAdding) {
+                NNUE.Network.AccumulatorAdd(accPair.White,
+                    NNUE.Network.CalculateIndex(
+                        TurnColor.White, BitOperations.ToSquare(square),
+                        pieceType,
+                        turnColor
+                    )
+                );
+                NNUE.Network.AccumulatorAdd(accPair.Black,
+                    NNUE.Network.CalculateIndex(
+                        TurnColor.Black, BitOperations.ToSquare(square),
+                        pieceType,
+                        turnColor
+                    )
+                );
+                //Logger.Log(Channel.Debug, "Added to both accumulators:", turnColor, pieceType, BitOperations.ToSquare(square));
+            }
+            else {
+                NNUE.Network.AccumulatorSub(accPair.White,
+                    NNUE.Network.CalculateIndex(
+                        TurnColor.White, BitOperations.ToSquare(square),
+                        pieceType,
+                        turnColor
+                    )
+                );
+                NNUE.Network.AccumulatorSub(accPair.Black,
+                    NNUE.Network.CalculateIndex(
+                        TurnColor.Black, BitOperations.ToSquare(square),
+                        pieceType,
+                        turnColor
+                    )
+                );
+                //Logger.Log(Channel.Debug, "Subtracted from both accumulators:", turnColor, pieceType, BitOperations.ToSquare(square));
+            }
         }
 
         /// <summary>
@@ -234,18 +275,19 @@ namespace ChessEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void MakeMove(Chessboard chessboard, in Move move) {
+        public static void MakeMove(Chessboard chessboard, in Move move, bool gen = false) {
+            //Logger.Log(Channel.Debug, $"Making move: {move} {move.pieceType} {(MoveKind)move.MoveKindCode}");
             // precheck castling
             if (move.CASTLE_FLAG) {
                 chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
 
                 if (chessboard.State.TurnColor == TurnColor.White) {
-                    UpdatePieceBitboard(ref chessboard.WhiteKing, move.bitboardFrom, move.bitboardTo, chessboard, TurnColor.White, PieceType.King); // move king
+                    UpdatePieceBitboard(ref chessboard.WhiteKing, move.bitboardFrom, move.bitboardTo, chessboard, TurnColor.White, PieceType.King, gen); // move king
                     chessboard.State.CanWhiteKingCastle = false;
                     chessboard.State.CanWhiteQueenCastle = false;
                 }
                 else {
-                    UpdatePieceBitboard(ref chessboard.BlackKing, move.bitboardFrom, move.bitboardTo, chessboard, TurnColor.Black, PieceType.King); // move king
+                    UpdatePieceBitboard(ref chessboard.BlackKing, move.bitboardFrom, move.bitboardTo, chessboard, TurnColor.Black, PieceType.King, gen); // move king
                     chessboard.State.CanBlackKingCastle = false;
                     chessboard.State.CanBlackQueenCastle = false;
                 }
@@ -254,18 +296,18 @@ namespace ChessEngine {
                 switch (move.MoveKindCode) {
                     case (byte)MoveKind.KingCastle:
                         if (chessboard.State.TurnColor == TurnColor.White) {
-                            UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.F1, (Bitboard)BSquare.H1, chessboard, TurnColor.White, PieceType.Rook);
+                            UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.F1, (Bitboard)BSquare.H1, chessboard, TurnColor.White, PieceType.Rook, gen);
                         }
                         else {
-                            UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.F8, (Bitboard)BSquare.H8, chessboard, TurnColor.Black, PieceType.Rook);
+                            UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.F8, (Bitboard)BSquare.H8, chessboard, TurnColor.Black, PieceType.Rook, gen);
                         }
                         break;
                     case (byte)MoveKind.QueenCastle:
                         if (chessboard.State.TurnColor == TurnColor.White) {
-                            UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.A1, (Bitboard)BSquare.D1, chessboard, TurnColor.White, PieceType.Rook);
+                            UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.A1, (Bitboard)BSquare.D1, chessboard, TurnColor.White, PieceType.Rook, gen);
                         }
                         else {
-                            UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.A8, (Bitboard)BSquare.D8, chessboard, TurnColor.Black, PieceType.Rook);
+                            UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.A8, (Bitboard)BSquare.D8, chessboard, TurnColor.Black, PieceType.Rook, gen);
                         }
                         break;
                 }
@@ -277,14 +319,15 @@ namespace ChessEngine {
             else if (move.MoveKindCode == (int)MoveKind.EpCapture) {
                 chessboard.stateStack[++chessboard.plyIndex] = chessboard.State;
 
+                // remove the captured pawn
                 if (chessboard.State.TurnColor == TurnColor.White) {
-                    UpdatePieceBitboard(ref chessboard.BlackPawns, move.bitboardTo >> 8, chessboard, TurnColor.Black, PieceType.Pawn); // remove black pawn
+                    UpdatePieceBitboard(ref chessboard.BlackPawns, move.bitboardTo >> 8, chessboard, TurnColor.Black, PieceType.Pawn, isAdding: false, gen); // remove black pawn
                 }
                 else {
-                    UpdatePieceBitboard(ref chessboard.WhitePawns, move.bitboardTo << 8, chessboard, TurnColor.White, PieceType.Pawn); // remove white pawn
+                    UpdatePieceBitboard(ref chessboard.WhitePawns, move.bitboardTo << 8, chessboard, TurnColor.White, PieceType.Pawn, isAdding: false, gen); // remove white pawn
                 }
 
-                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // move pawn
+                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn, gen); // move pawn
                 chessboard.State.EnPassantSquare = null;
                 chessboard.State.ZobristHashKey ^= ZobristHashing.enPassantFile[ZobristHashing.enPassantFileIndex];
             }
@@ -297,32 +340,32 @@ namespace ChessEngine {
                         // check promotion
                         switch (move.MoveKindCode) {
                             case (byte)MoveKind.KnightPromotion:
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Knight); // spawn new knight
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Knight, isAdding: true, gen); // spawn new knight
                                 break;
 
                             case (byte)MoveKind.BishopPromotion:
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Bishop); // spawn new bishop
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Bishop, isAdding: true, gen); // spawn new bishop
                                 break;
 
                             case (byte)MoveKind.RookPromotion:
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Rook); // spawn new rook
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Rook, isAdding: true, gen); // spawn new rook
                                 break;
 
                             case (byte)MoveKind.QueenPromotion:
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Queen); // spawn new queen
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Queen, isAdding: true, gen); // spawn new queen
                                 break;
 
                             default: // no promotion
-                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, move.pieceType);
+                                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, move.pieceType, gen);
                                 break;
                         }
                     }
                     else {
-                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, move.pieceType); // move piece
+                        UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, move.pieceType, gen); // move piece
                     }
                     chessboard.State.CapturedPiece = null;
 
@@ -335,29 +378,29 @@ namespace ChessEngine {
                     for (int opponantPieceTypeIndex = 0; opponantPieceTypeIndex < 6; opponantPieceTypeIndex++) {
                         if ((chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex] & move.bitboardTo) != 0) {
                             // update piece positions and existance
-                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex], move.bitboardTo, chessboard, chessboard.State.TurnColor ^ TurnColor.Black, (PieceType)opponantPieceTypeIndex); // remove captured piece
-                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, move.pieceType); // move piece
+                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor ^ 1, opponantPieceTypeIndex], move.bitboardTo, chessboard, chessboard.State.TurnColor ^ TurnColor.Black, (PieceType)opponantPieceTypeIndex, isAdding: false, gen); // remove captured piece
+                            UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType], move.bitboardFrom, move.bitboardTo, chessboard, chessboard.State.TurnColor, move.pieceType, gen); // move piece
 
                             // check promotion
                             switch (move.MoveKindCode) {
                                 case (byte)MoveKind.KnightPromotionCapture:
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Knight); // spawn new knight
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Knight], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Knight, isAdding: true, gen); // spawn new knight
                                     break;
 
                                 case (byte)MoveKind.BishopPromotionCapture:
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Bishop); // spawn new bishop
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Bishop], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Bishop, isAdding: true, gen); // spawn new bishop
                                     break;
 
                                 case (byte)MoveKind.RookPromotionCapture:
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Rook); // spawn new rook
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Rook], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Rook, isAdding: true, gen); // spawn new rook
                                     break;
 
                                 case (byte)MoveKind.QueenPromotionCapture:
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // remove promoting pawn
-                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Queen); // spawn new queen
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Pawn, isAdding: false, gen); // remove promoting pawn
+                                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Queen], move.bitboardTo, chessboard, chessboard.State.TurnColor, PieceType.Queen, isAdding: true, gen); // spawn new queen
                                     break;
                             }
 
@@ -423,7 +466,9 @@ namespace ChessEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void UnmakeMove(Chessboard chessboard, in Move move) {
+        public static void UnmakeMove(Chessboard chessboard, in Move move, bool gen = false) {
+            //Logger.Log(Channel.Debug, $"Unmaking move: {move} {move.pieceType} {(MoveKind)move.MoveKindCode}");
+
             //restore the previous state before latest move pushed move, the latest state provide the turn to play,
             ref var latestState = ref chessboard.stateStack[chessboard.plyIndex--]; // pop the latest move form the stack then decrement
             chessboard.State = latestState;
@@ -433,58 +478,58 @@ namespace ChessEngine {
             if (move.PROMOTION_FLAG) {
                 var color = (int)latestState.TurnColor;
                 if (move.CAPTURE_FLAG) { // restore captured piece
-                    UpdatePieceBitboard(ref chessboard.Position[color ^ 1, (int)latestState.CapturedPiece!], move.bitboardTo, chessboard, latestState.TurnColor ^ TurnColor.Black, (PieceType)latestState.CapturedPiece);
+                    UpdatePieceBitboard(ref chessboard.Position[color ^ 1, (int)latestState.CapturedPiece!], move.bitboardTo, chessboard, latestState.TurnColor ^ TurnColor.Black, (PieceType)latestState.CapturedPiece, isAdding: true, gen);
                 }
                 //remove new piece
                 for (int pieceTypeIndex = 0; pieceTypeIndex < chessboard.Position.GetLength(1); pieceTypeIndex++) {
                     if ((chessboard.Position[(int)latestState.TurnColor, pieceTypeIndex] & move.bitboardTo) != 0) {
-                        UpdatePieceBitboard(ref chessboard.Position[(int)latestState.TurnColor, pieceTypeIndex], move.bitboardTo, chessboard, latestState.TurnColor, (PieceType)pieceTypeIndex); // restore piece position
+                        UpdatePieceBitboard(ref chessboard.Position[(int)latestState.TurnColor, pieceTypeIndex], move.bitboardTo, chessboard, latestState.TurnColor, (PieceType)pieceTypeIndex, isAdding: false, gen); // restore piece position
                         break;
                     }
                 }
                 //restore pawn
-                UpdatePieceBitboard(ref chessboard.Position[color, (int)PieceType.Pawn], move.bitboardFrom, chessboard, latestState.TurnColor, PieceType.Pawn);
+                UpdatePieceBitboard(ref chessboard.Position[color, (int)PieceType.Pawn], move.bitboardFrom, chessboard, latestState.TurnColor, PieceType.Pawn, isAdding: true, gen);
             }
 
             else if (move.CASTLE_FLAG) {
-                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.King], move.bitboardTo, move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.King); // restore king position
+                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.King], move.bitboardTo, move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.King, gen); // restore king position
 
                 //precheck castle => jump the rook over the king
                 if (move.MoveKindCode == (byte)MoveKind.KingCastle) {
                     if (chessboard.State.TurnColor == TurnColor.White) {
-                        UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.F1, (Bitboard)BSquare.H1, chessboard, TurnColor.White, PieceType.Rook);
+                        UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.F1, (Bitboard)BSquare.H1, chessboard, TurnColor.White, PieceType.Rook, gen);
                     }
                     else {
-                        UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.F8, (Bitboard)BSquare.H8, chessboard, TurnColor.Black, PieceType.Rook);
+                        UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.F8, (Bitboard)BSquare.H8, chessboard, TurnColor.Black, PieceType.Rook, gen);
                     }
                 }
                 else if (move.MoveKindCode == (byte)MoveKind.QueenCastle) {
                     if (chessboard.State.TurnColor == TurnColor.White) {
-                        UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.D1, (Bitboard)BSquare.A1, chessboard, TurnColor.White, PieceType.Rook);
+                        UpdatePieceBitboard(ref chessboard.WhiteRooks, (Bitboard)BSquare.D1, (Bitboard)BSquare.A1, chessboard, TurnColor.White, PieceType.Rook, gen);
                     }
                     else {
-                        UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.D8, (Bitboard)BSquare.A8, chessboard, TurnColor.Black, PieceType.Rook);
+                        UpdatePieceBitboard(ref chessboard.BlackRooks, (Bitboard)BSquare.D8, (Bitboard)BSquare.A8, chessboard, TurnColor.Black, PieceType.Rook, gen);
                     }
                 }
             }
 
             else if (move.MoveKindCode == (byte)MoveKind.EpCapture) {
-                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn); // restore pawn position
+                UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor, (int)PieceType.Pawn], move.bitboardTo, move.bitboardFrom, chessboard, chessboard.State.TurnColor, PieceType.Pawn, gen); // restore pawn position
                 if (chessboard.State.TurnColor == TurnColor.White) {
-                    UpdatePieceBitboard(ref chessboard.BlackPawns, move.bitboardTo >> 8, chessboard, TurnColor.Black, PieceType.Pawn);
+                    UpdatePieceBitboard(ref chessboard.BlackPawns, move.bitboardTo >> 8, chessboard, TurnColor.Black, PieceType.Pawn, isAdding: true, gen); // restore black pawn
                 }
                 else {
-                    UpdatePieceBitboard(ref chessboard.WhitePawns, move.bitboardTo << 8, chessboard, TurnColor.White, PieceType.Pawn);
+                    UpdatePieceBitboard(ref chessboard.WhitePawns, move.bitboardTo << 8, chessboard, TurnColor.White, PieceType.Pawn, isAdding: true, gen); // white black pawn
                 }
             }
 
             else {
                 // restore last moved piece from latestState
                 ref Bitboard lastMovedPieceBitboard = ref chessboard.Position[(int)chessboard.State.TurnColor, (int)move.pieceType];
-                UpdatePieceBitboard(ref lastMovedPieceBitboard, move.bitboardTo, move.bitboardFrom, chessboard, chessboard.State.TurnColor, move.pieceType); // restore piece position
+                UpdatePieceBitboard(ref lastMovedPieceBitboard, move.bitboardTo, move.bitboardFrom, chessboard, chessboard.State.TurnColor, move.pieceType, gen); // restore piece position
 
                 if (chessboard.State.CapturedPiece.HasValue) { // restore opponant piece
-                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor ^ 1, (int)chessboard.State.CapturedPiece], move.bitboardTo, chessboard, chessboard.State.TurnColor ^ TurnColor.Black, (PieceType)chessboard.State.CapturedPiece);
+                    UpdatePieceBitboard(ref chessboard.Position[(int)chessboard.State.TurnColor ^ 1, (int)chessboard.State.CapturedPiece], move.bitboardTo, chessboard, chessboard.State.TurnColor ^ TurnColor.Black, (PieceType)chessboard.State.CapturedPiece, isAdding: true, gen);
                 }
             }
             //Logger.Log(Channel.Debug, "plyIndex after unmaking move:", chessboard.plyIndex);

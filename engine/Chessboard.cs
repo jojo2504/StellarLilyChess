@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using ChessEngine.Pieces;
+using ChessEngine.SearchNamespace;
 using ChessEngine.Utils;
 using static ChessEngine.Move;
 
@@ -64,7 +65,7 @@ namespace ChessEngine {
         public Bitboard AllPieces => AllWhitePieces | AllBlackPieces;
 
         public State State = new();
-        public const ushort MaxPly = 2048;
+        public const ushort MaxPly = 8191; // 8192 - 1
         public State[] stateStack = new State[MaxPly];
         public ushort plyIndex = 0;
 
@@ -82,51 +83,53 @@ namespace ChessEngine {
         public ref Bitboard BlackKing => ref Position[(int)TurnColor.Black, (int)PieceType.King];
 
         public Chessboard(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
-            ParseFEN(fen);
+            Logger.Log(Channel.Debug, $"Initializing chessboard with FEN: {fen}");
 
             // init game state not in fen
             State.Checkmated = false;
             State.Stalemated = false;
             stateStack[plyIndex++] = State; // halfmove 0
+
+            ParseFEN(fen);
         }
 
         void ParseFEN(string fen) {
             var pieceSetters = new Dictionary<char, Action<int>> {
                 { 'P', idx => {
-                    UpdatePieceBitboard(ref WhitePawns, 1UL << idx, this, TurnColor.White, PieceType.Pawn);
+                    UpdatePieceBitboard(ref WhitePawns, 1UL << idx, this, TurnColor.White, PieceType.Pawn, isAdding: true, gen: false);
                 }},
                 { 'N', idx => {
-                    UpdatePieceBitboard(ref WhiteKnights, 1UL << idx, this, TurnColor.White, PieceType.Knight);
+                    UpdatePieceBitboard(ref WhiteKnights, 1UL << idx, this, TurnColor.White, PieceType.Knight, isAdding: true, gen: false);
                 }},
                 { 'B', idx => {
-                    UpdatePieceBitboard(ref WhiteBishops, 1UL << idx, this, TurnColor.White, PieceType.Bishop);
+                    UpdatePieceBitboard(ref WhiteBishops, 1UL << idx, this, TurnColor.White, PieceType.Bishop, isAdding: true, gen: false);
                 }},
                 { 'R', idx => {
-                    UpdatePieceBitboard(ref WhiteRooks, 1UL << idx, this, TurnColor.White, PieceType.Rook);
+                    UpdatePieceBitboard(ref WhiteRooks, 1UL << idx, this, TurnColor.White, PieceType.Rook, isAdding: true, gen: false);
                 }},
                 { 'Q', idx => {
-                    UpdatePieceBitboard(ref WhiteQueens, 1UL << idx, this, TurnColor.White, PieceType.Queen);
+                    UpdatePieceBitboard(ref WhiteQueens, 1UL << idx, this, TurnColor.White, PieceType.Queen, isAdding: true, gen: false);
                 }},
                 { 'K', idx => {
-                    UpdatePieceBitboard(ref WhiteKing, 1UL << idx, this, TurnColor.White, PieceType.King);
+                    UpdatePieceBitboard(ref WhiteKing, 1UL << idx, this, TurnColor.White, PieceType.King, isAdding: true, gen: false);
                 }},
                 { 'p', idx => {
-                    UpdatePieceBitboard(ref BlackPawns, 1UL << idx, this, TurnColor.Black, PieceType.Pawn);
+                    UpdatePieceBitboard(ref BlackPawns, 1UL << idx, this, TurnColor.Black, PieceType.Pawn, isAdding: true, gen: false);
                 }},
                 { 'n', idx => {
-                    UpdatePieceBitboard(ref BlackKnights, 1UL << idx, this, TurnColor.Black, PieceType.Knight);
+                    UpdatePieceBitboard(ref BlackKnights, 1UL << idx, this, TurnColor.Black, PieceType.Knight, isAdding: true, gen: false);
                 }},
                 { 'b', idx => {
-                    UpdatePieceBitboard(ref BlackBishops, 1UL << idx, this, TurnColor.Black, PieceType.Bishop);
+                    UpdatePieceBitboard(ref BlackBishops, 1UL << idx, this, TurnColor.Black, PieceType.Bishop, isAdding: true, gen: false);
                 }},
                 { 'r', idx => {
-                    UpdatePieceBitboard(ref BlackRooks, 1UL << idx, this, TurnColor.Black, PieceType.Rook);
+                    UpdatePieceBitboard(ref BlackRooks, 1UL << idx, this, TurnColor.Black, PieceType.Rook, isAdding: true, gen: false);
                 }},
                 { 'q', idx => {
-                    UpdatePieceBitboard(ref BlackQueens, 1UL << idx, this, TurnColor.Black, PieceType.Queen);
+                    UpdatePieceBitboard(ref BlackQueens, 1UL << idx, this, TurnColor.Black, PieceType.Queen, isAdding: true, gen: false);
                 }},
                 { 'k', idx => {
-                    UpdatePieceBitboard(ref BlackKing, 1UL << idx, this, TurnColor.Black, PieceType.King);
+                    UpdatePieceBitboard(ref BlackKing, 1UL << idx, this, TurnColor.Black, PieceType.King, isAdding: true, gen: false);
                 }},
             };
 
@@ -169,7 +172,6 @@ namespace ChessEngine {
             if (Enum.TryParse<Square>(epSquare, out var square)) {
                 State.EnPassantSquare = square;
                 ZobristHashing.enPassantFileIndex = (int)square % 8;
-                Console.WriteLine($"En passant file index: {ZobristHashing.enPassantFileIndex}");
                 State.ZobristHashKey ^= ZobristHashing.enPassantFile[ZobristHashing.enPassantFileIndex];
             }
             else {
@@ -193,6 +195,8 @@ namespace ChessEngine {
                     }
                 }
             }
+
+            Logger.Warning(Channel.Debug, $"Finished parsing FEN. Current board:\n{this}");
         }
 
         public override string ToString() {
@@ -515,11 +519,11 @@ namespace ChessEngine {
 
             nMoves = GenerateMoves(allPseudoLegalMoves);
             for (i = 0; i < nMoves; i++) {
-                MakeMove(this, allPseudoLegalMoves[i]);
+                MakeMove(this, allPseudoLegalMoves[i], gen: true);
                 if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
                     LegalMoves[lMoves++] = allPseudoLegalMoves[i];
                 }
-                UnmakeMove(this, allPseudoLegalMoves[i]);
+                UnmakeMove(this, allPseudoLegalMoves[i], gen: true);
             }
 
             return lMoves;
@@ -541,6 +545,25 @@ namespace ChessEngine {
                     nodes += Perft(depth - 1);
                 }
                 UnmakeMove(this, allPseudoLegalMoves[i]);
+            }
+
+            return nodes;
+        }
+
+        public ulong LPerft(int depth) {
+            //return DrawPerftTree(depth, indent: "");
+            if (depth == 0)
+                return 1UL;
+
+            Span<Move> LegalMoves = stackalloc Move[256];
+            ulong nodes = 0;
+            int n_moves, i;
+
+            n_moves = GenerateLegalMoves(LegalMoves);
+            for (i = 0; i < n_moves; i++) {
+                MakeMove(this, LegalMoves[i]);
+                nodes += Perft(depth - 1);    
+                UnmakeMove(this, LegalMoves[i]);
             }
 
             return nodes;
@@ -598,7 +621,7 @@ namespace ChessEngine {
 
             for (i = 0; i < nMoves; i++) {
                 Move.MakeMove(this, allPseudoLegalMoves[i]);
-                if (!IsInCheck(stateStack[plyIndex - 1].TurnColor)) {
+                if (!IsInCheck(stateStack[plyIndex].TurnColor)) {
                     ulong moveNodes = Perft(depth - 1);  // Store individual result
                     nodes += moveNodes;                   // Add to total
                     Move.UnmakeMove(this, allPseudoLegalMoves[i]);

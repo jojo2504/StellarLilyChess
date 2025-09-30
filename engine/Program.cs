@@ -1,7 +1,5 @@
 global using Bitboard = ulong;
 global using ChessEngine.Utils.Logging;
-
-using ChessEngine.Evaluation;
 using ChessEngine.SearchNamespace;
 
 namespace ChessEngine {
@@ -17,9 +15,20 @@ namespace ChessEngine {
                 //Chessboard chessboard = new();
                 //chessboard.Perft(4);
                 //GameManager gameManager = new(fen: "7k/R7/5K2/8/8/8/8/8 w - - 0 1");
-                GameManager gameManager = new();
+                Console.WriteLine("Running some debug functions");
+                //GameManager gameManager = new("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+                GameManager gameManager = new("kbK5/pp6/RP6/8/8/8/8/8 b - - 0 1"); // mat en 2
+                //GameManager gameManager = new("kbK5/p7/pP6/8/8/8/8/8 w - - 0 1");
+                //GameManager gameManager = new("rnbqkbnr/1pp1pppp/8/p2p4/8/PP6/R1PPPPPP/1NBQKBNR w Kkq - 0 1");
+
+                //GameManager gameManager = new();
+                //gameManager.PVLine();
+
+                //gameManager = new("rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR b KQkq - 0 1");
+                //gameManager.PVLine();
+                //gameManager.AccumulatorDebug();
                 gameManager.StartSelfGame();
-                Console.WriteLine("game finished");
+                //Console.WriteLine("game finished");
             }
 
             // This is the entry point of the application for the perftree tests 
@@ -31,6 +40,7 @@ namespace ChessEngine {
                 Chessboard chessboard = new(fen);
                 chessboard.Perftree(depth);
             }
+
             // This is the entry point of the application for the UCI protocol.
             else {
                 try {

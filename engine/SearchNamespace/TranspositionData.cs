@@ -1,11 +1,11 @@
 namespace ChessEngine.SearchNamespace {
-    public record struct TranspositionData {
-        public int depth;
-        public int score;
-        public Move bestMove;
-        public NodeType nodeType;
+    internal record struct TranspositionData {
+        internal int depth;
+        internal int score;
+        internal Move bestMove;
+        internal NodeType nodeType;
 
-        public TranspositionData(int depth, int score, Move bestMove, NodeType nodeType) {
+        internal TranspositionData(int depth, int score, Move bestMove, NodeType nodeType) {
             this.depth = depth;
             this.score = score;
             this.bestMove = bestMove;
